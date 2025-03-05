@@ -1,0 +1,28 @@
+.fc {
+    height: 100%;
+    width: 100%;
+}
+
+.fc-daygrid-day-number {
+    font-weight: bold;
+    font-size: 16px;
+    padding: 8px;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.fc-col-header-cell a {
+    text-decoration: none; /* Quitar el subrayado */
+    font-weight: bold;
+    font-size: 14px;
+    color: #555;
+    text-transform: uppercase; /* Convertir a mayúsculas */
+    padding: 10px 0;
+    display: block;
+    transition: all 0.2s ease;
+}
+
+.fc-day:hover {
+    background-color: rgba(0, 123, 255, 0.2);
+    cursor: pointer;
+}
