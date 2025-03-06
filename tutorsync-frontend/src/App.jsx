@@ -1,13 +1,24 @@
 import { useState } from "react";
 import "./App.css";
-// import Login from "./components/Login";
 import Home from "./components/Home";
+import Login from "./components/Login";
 
 function App() {
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+    const handleLoginSuccess = () => {
+        setIsAuthenticated(true);
+    };
+
+    const handleLogout = () => {
+        setIsAuthenticated(false);
+    };
+
     return (
         <>
-            {/* <Login /> */}
-            <Home />
+            {!isAuthenticated && <Login onLoginSuccess={handleLoginSuccess} />}
+
+            {isAuthenticated && <Home onLogout={handleLogout} />}
         </>
     );
 }

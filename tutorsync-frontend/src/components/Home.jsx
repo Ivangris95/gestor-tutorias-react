@@ -4,7 +4,14 @@ import Calendar from "./Calendar";
 import PaymentGateway from "./PaymentGateway";
 import Login from "./Login";
 
-function Home() {
+function Home({ onLogout }) {
+    const [showPaymentGateway, setShowPaymentGateway] = useState(false);
+
+    const togglePaymentGateway = (e) => {
+        e.preventDefault();
+        setShowPaymentGateway(!showPaymentGateway);
+    };
+
     return (
         <div style={{ height: "100vh" }} className="d-flex flex-column">
             <div className="navbar navbar-expand-lg bg-primary ">
@@ -21,7 +28,16 @@ function Home() {
                             <i className="fa-regular fa-user"></i>
                         </a>
 
-                        <a className="nav-link text-white" href="#">
+                        <a
+                            className="nav-link text-white"
+                            href="#"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                if (onLogout) {
+                                    onLogout();
+                                }
+                            }}
+                        >
                             <i className="fas fa-sign-out-alt"></i>
                         </a>
                     </div>
@@ -31,15 +47,24 @@ function Home() {
                 <h2 className="my-5 text-center text-primary">
                     Welcome to TutorSync {/*username*/}
                 </h2>
-                <a href="#" className="text-decoration-none">
+                <a
+                    href="#"
+                    className="text-decoration-none"
+                    onClick={togglePaymentGateway}
+                >
                     <p className="text-center text-primary fs-4">
                         <i className="fa-solid fa-wallet  "></i> : 0{/*tokens*/}
                     </p>
                 </a>
             </div>
             <div className="d-flex flex-grow-1 h-75">
-                <Calendar />
-                {/* <PaymentGateway /> */}
+                {showPaymentGateway ? (
+                    {
+                        /*<PaymentGateway />*/
+                    }
+                ) : (
+                    <Calendar />
+                )}
             </div>
         </div>
     );

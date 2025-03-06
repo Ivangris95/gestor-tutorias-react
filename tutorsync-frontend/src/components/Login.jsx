@@ -3,7 +3,7 @@ import SingIn from "./SIngin";
 import Singup from "./Singup";
 import "animate.css";
 
-function Login() {
+function Login({ onLoginSuccess }) {
     const [isSignIn, setIsSignIn] = useState(true);
     const [animationClass, setAnimationClass] = useState("animate__fadeIn");
 
@@ -15,13 +15,21 @@ function Login() {
         }, 100);
     };
 
+    // Pasamos esta función a los componentes hijos
+    const handleAuthentication = () => {
+        // Llamamos a la función recibida desde el componente App
+        if (onLoginSuccess) {
+            onLoginSuccess();
+        }
+    };
+
     return (
         <div
             className="d-flex justify-content-center align-items-center"
             style={{ height: "100vh" }}
         >
             <div
-                className="row d-flex justify-content-center align-items-center w-50  shadow-lg"
+                className="row d-flex justify-content-center align-items-center w-50 shadow-lg"
                 style={{ height: "60%" }}
             >
                 <div className="col-7 h-100 text-center d-flex flex-column justify-content-center align-items-center bg-primary text-white">
@@ -74,7 +82,11 @@ function Login() {
 
                     {/* Contenedor animado */}
                     <div className={`animate__animated ${animationClass}`}>
-                        {isSignIn ? <SingIn /> : <Singup />}
+                        {isSignIn ? (
+                            <SingIn onAuthenticate={handleAuthentication} />
+                        ) : (
+                            <Singup onAuthenticate={handleAuthentication} />
+                        )}
                     </div>
                 </div>
             </div>

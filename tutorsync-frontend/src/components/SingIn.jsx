@@ -1,6 +1,18 @@
-function SingIn() {
+import { useState } from "react";
+
+function SingIn({ onAuthenticate }) {
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+
+    const handleSubmit = (event) => {
+        event.preventDefault();
+        if (onAuthenticate) {
+            onAuthenticate();
+        }
+    };
+
     return (
-        <form action="" className="d-flex flex-column">
+        <form onSubmit={handleSubmit} className="d-flex flex-column">
             <div className="form-group p-3">
                 <label
                     htmlFor="exampleInputEmail1"
@@ -14,6 +26,8 @@ function SingIn() {
                     id="exampleInputEmail1"
                     aria-describedby="emailHelp"
                     placeholder="Enter email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                 />
                 <small id="emailHelp" className="form-text text-muted">
                     We'll never share your email with anyone else.
@@ -31,6 +45,8 @@ function SingIn() {
                     className="form-control"
                     id="exampleInputPassword1"
                     placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                 />
             </div>
             <div className="form-group text-lg-center p-4 mt-5">

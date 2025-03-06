@@ -1,6 +1,6 @@
 function Hours() {
     return (
-        <div className="d-flex flex-column align-items-center w-100 overflow-x-scroll p-2">
+        <div className="d-flex flex-column align-items-center w-100 overflow-y-auto p-2">
             <button className="btn btn-outline-primary w-75 m-2">10:00</button>
             <button className="btn btn-outline-primary w-75 m-2">10:30</button>
             <button className="btn btn-outline-primary w-75 m-2">11:00</button>
