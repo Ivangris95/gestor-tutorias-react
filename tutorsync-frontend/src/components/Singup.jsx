@@ -1,20 +1,57 @@
 import { useState } from "react";
+import axios from "axios";
 
 function Singup({ onAuthenticate }) {
     const [userName, setUserName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
 
-    const handleSubmit = (event) => {
+    const handleSubmit = async (event) => {
         event.preventDefault();
-        if (onAuthenticate) {
-            onAuthenticate();
+
+        // Validar que las contraseñas coincidan
+        if (password !== confirmPassword) {
+            setError("Las contraseñas no coinciden");
+            return;
+        }
+
+        setError("");
+        setLoading(true);
+
+        try {
+            const response = await axios.post(
+                "http://localhost:5000/api/register",
+                {
+                    username: userName,
+                    email: email,
+                    password: password,
+                }
+            );
+
+            localStorage.setItem("user", JSON.stringify(response.data.user));
+
+            if (onAuthenticate) {
+                onAuthenticate();
+            }
+        } catch (error) {
+            setError(
+                error.response?.data?.message || "Error al registrar usuario"
+            );
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
         <form onSubmit={handleSubmit} className="d-flex flex-column">
+            {error && (
+                <div className="alert alert-danger" role="alert">
+                    {error}
+                </div>
+            )}
             <div className="form-group p-2">
                 <label htmlFor="name" className="mb-2 fs-5 fw-semibold">
                     Username
@@ -46,9 +83,6 @@ function Singup({ onAuthenticate }) {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                 />
-                <small id="emailHelp" className="form-text text-muted">
-                    We'll never share your email with anyone else.
-                </small>
             </div>
             <div className="form-group p-2">
                 <label
@@ -86,7 +120,7 @@ function Singup({ onAuthenticate }) {
             </div>
             <div className="form-group text-lg-center p-4 mt-3">
                 <button type="submit" className="btn btn-primary w-100">
-                    Sign up
+                    {loading ? "Processing..." : "Sign up"}
                 </button>
             </div>
         </form>

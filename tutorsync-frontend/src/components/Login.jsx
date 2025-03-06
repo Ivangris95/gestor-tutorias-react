@@ -15,9 +15,7 @@ function Login({ onLoginSuccess }) {
         }, 100);
     };
 
-    // Pasamos esta función a los componentes hijos
     const handleAuthentication = () => {
-        // Llamamos a la función recibida desde el componente App
         if (onLoginSuccess) {
             onLoginSuccess();
         }

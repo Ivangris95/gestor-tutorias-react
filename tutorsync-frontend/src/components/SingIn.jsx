@@ -1,60 +1,78 @@
-import { useState } from "react";
+import React, { useState } from "react";
+import axios from "axios";
 
 function SingIn({ onAuthenticate }) {
-    const [email, setEmail] = useState("");
+    const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
 
-    const handleSubmit = (event) => {
-        event.preventDefault();
-        if (onAuthenticate) {
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError("");
+        setLoading(true);
+
+        try {
+            const response = await axios.post(
+                "http://localhost:5000/api/login",
+                {
+                    username,
+                    password,
+                }
+            );
+
+            // Guardar información del usuario en localStorage
+            localStorage.setItem("user", JSON.stringify(response.data.user));
+
+            // Llamar a la función que maneja el éxito de autenticación
             onAuthenticate();
+        } catch (error) {
+            setError(
+                error.response?.data?.message || "Error al iniciar sesión"
+            );
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="d-flex flex-column">
-            <div className="form-group p-3">
-                <label
-                    htmlFor="exampleInputEmail1"
-                    className="mb-2 fs-5 fw-semibold"
+        <div>
+            <h3 className="mb-4">Iniciar Sesión</h3>
+
+            {error && <div className="alert alert-danger">{error}</div>}
+
+            <form onSubmit={handleSubmit}>
+                <div className="mb-3">
+                    <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Nombre de usuario"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        required
+                    />
+                </div>
+
+                <div className="mb-3">
+                    <input
+                        type="password"
+                        className="form-control"
+                        placeholder="Contraseña"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                    />
+                </div>
+
+                <button
+                    type="submit"
+                    className="btn btn-primary w-100"
+                    disabled={loading}
                 >
-                    Email address
-                </label>
-                <input
-                    type="email"
-                    className="form-control"
-                    id="exampleInputEmail1"
-                    aria-describedby="emailHelp"
-                    placeholder="Enter email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                />
-                <small id="emailHelp" className="form-text text-muted">
-                    We'll never share your email with anyone else.
-                </small>
-            </div>
-            <div className="form-group p-3 ">
-                <label
-                    htmlFor="exampleInputPassword1"
-                    className="mb-2 fs-5 fw-semibold"
-                >
-                    Password
-                </label>
-                <input
-                    type="password"
-                    className="form-control"
-                    id="exampleInputPassword1"
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                />
-            </div>
-            <div className="form-group text-lg-center p-4 mt-5">
-                <button type="submit" className="btn btn-primary w-100">
-                    Sign in
+                    {loading ? "Cargando..." : "Iniciar Sesión"}
                 </button>
-            </div>
-        </form>
+            </form>
+        </div>
     );
 }
 

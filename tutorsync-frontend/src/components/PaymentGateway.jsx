@@ -8,7 +8,6 @@ import {
     useElements,
 } from "@stripe/react-stripe-js";
 
-// Carga la clave pública de Stripe desde variables de entorno
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 // Componente del botón de pago de Stripe
@@ -40,7 +39,6 @@ function StripePaymentButton({ orderDetails }) {
                 setError(null);
                 setProcessing(false);
 
-                // Aquí confirmarías el pago con el backend
                 alert(
                     `¡Pago con Stripe exitoso! ID de método de pago: ${paymentMethod.id}`
                 );
@@ -174,7 +172,6 @@ function PaymentGateway() {
                                                         "Detalles de la transacción:",
                                                         details
                                                     );
-                                                    // Aquí puedes redirigir o actualizar el estado de la aplicación
                                                 });
                                         }}
                                         onError={(err) => {

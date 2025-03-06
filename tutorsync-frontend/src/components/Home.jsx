@@ -6,6 +6,16 @@ import Login from "./Login";
 
 function Home({ onLogout }) {
     const [showPaymentGateway, setShowPaymentGateway] = useState(false);
+    const [username, setUsername] = useState("");
+
+    useEffect(() => {
+        // Obtener el usuario del localStorage
+        const user = localStorage.getItem("user");
+
+        if (user) {
+            setUsername(JSON.parse(user).username);
+        }
+    }, []);
 
     const togglePaymentGateway = (e) => {
         e.preventDefault();
@@ -33,6 +43,8 @@ function Home({ onLogout }) {
                             href="#"
                             onClick={(e) => {
                                 e.preventDefault();
+
+                                localStorage.removeItem("user");
                                 if (onLogout) {
                                     onLogout();
                                 }
@@ -45,7 +57,8 @@ function Home({ onLogout }) {
             </div>
             <div>
                 <h2 className="my-5 text-center text-primary">
-                    Welcome to TutorSync {/*username*/}
+                    Welcome to TutorSync{" "}
+                    <span className="text-dark">{username}</span>
                 </h2>
                 <a
                     href="#"
