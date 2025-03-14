@@ -1,5 +1,5 @@
 import { useState } from "react";
-import SingIn from "./SIngin";
+import SingIn from "./SingIn";
 import Singup from "./Singup";
 import "animate.css";
 
