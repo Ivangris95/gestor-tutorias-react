@@ -24,7 +24,7 @@ function Calendar() {
     return (
         <div className="flex-grow-1">
             <div className="d-flex justify-content-center align-items-center h-100 pb-5">
-                <div className="col-4 h-75 shadow-lg p-2 rounded-2 border">
+                <div className="col-4 h-75 shadow-lg p-2 rounded-2">
                     <FullCalendar
                         plugins={[dayGridPlugin, interactionPlugin]}
                         initialView="dayGridMonth"
