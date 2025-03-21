@@ -1,3 +1,4 @@
+// Función para actualizar los tokens del usuario en la base de datos
 export const updateUserTokens = async (tokensToAdd, orderId) => {
     try {
         // Obtener el ID del usuario del almacenamiento local
@@ -9,7 +10,7 @@ export const updateUserTokens = async (tokensToAdd, orderId) => {
             );
         }
 
-        // Hacer una llamada a la API para actualizar los tokens del usuario
+        // Hacer una llamada a tu API para actualizar los tokens del usuario
         const response = await fetch(
             `${
                 import.meta.env.VITE_API_URL || "http://localhost:5000"
@@ -38,5 +39,32 @@ export const updateUserTokens = async (tokensToAdd, orderId) => {
     } catch (error) {
         console.error("Error en updateUserTokens:", error);
         throw error;
+    }
+};
+
+// Función para obtener los tokens disponibles del usuario
+export const getUserTokens = async () => {
+    try {
+        const userData = JSON.parse(localStorage.getItem("user"));
+
+        if (!userData || !userData.id) {
+            return 0;
+        }
+
+        const response = await fetch(
+            `${
+                import.meta.env.VITE_API_URL || "http://localhost:5000"
+            }/api/users/${userData.id}/tokens`
+        );
+
+        if (!response.ok) {
+            throw new Error("Error al obtener tokens");
+        }
+
+        const data = await response.json();
+        return data.tokensAvailable || 0;
+    } catch (error) {
+        console.error("Error al obtener tokens:", error);
+        return 0;
     }
 };

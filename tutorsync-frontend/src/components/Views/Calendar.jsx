@@ -5,11 +5,19 @@ import interactionPlugin from "@fullcalendar/interaction";
 import Hours from "./Hours";
 import "./calendar.css";
 
-function Calendar() {
+function Calendar({ onNeedTokens, onBookingComplete }) {
     const [selectedDate, setSelectedDate] = useState("");
+    const [selectedDateObj, setSelectedDateObj] = useState(null);
 
     const handleClick = (dateClickInfo) => {
         const date = new Date(dateClickInfo.date);
+
+        // No permitir seleccionar fechas pasadas
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (date < today) {
+            return;
+        }
 
         const options = {
             weekday: "long",
@@ -19,6 +27,16 @@ function Calendar() {
         };
         const formattedDate = date.toLocaleDateString("en-US", options);
         setSelectedDate(formattedDate);
+        setSelectedDateObj(date);
+    };
+
+    const handleHourSelect = (hour, isSuccessful) => {
+        console.log("Hora seleccionada:", hour);
+
+        // Si la reserva fue exitosa, notificar al componente padre
+        if (isSuccessful && onBookingComplete) {
+            onBookingComplete();
+        }
     };
 
     return (
@@ -37,15 +55,19 @@ function Calendar() {
                 </div>
                 <div className="col-2 h-75 m-3 d-flex flex-column align-items-center shadow-lg p-3 rounded-2">
                     {selectedDate ? (
-                        <p className="text-primary fs-5 fw-bold">
+                        <p className="text-primary fs-5 fw-bold mt-4">
                             {selectedDate}
                         </p>
                     ) : (
-                        <p className="text-primary fs-4 fw-bold">
+                        <p className="text-primary fs-4 fw-bold mt-4">
                             Select a date
                         </p>
                     )}
-                    <Hours />
+                    <Hours
+                        selectedDate={selectedDateObj}
+                        onHourSelect={handleHourSelect}
+                        onNeedTokens={onNeedTokens}
+                    />
                 </div>
             </div>
         </div>

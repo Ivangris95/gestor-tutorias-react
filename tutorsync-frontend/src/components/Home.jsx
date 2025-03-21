@@ -2,54 +2,23 @@ import "animate.css";
 import { useState, useEffect } from "react";
 import Calendar from "./Views/Calendar";
 import PaymentGateway from "./PaymentComponents/PaymentGateway";
+import { getUserTokens } from "../services/tokenService";
 
 function Home({ onLogout }) {
     const [showPaymentGateway, setShowPaymentGateway] = useState(false);
     const [username, setUsername] = useState("");
     const [tokens, setTokens] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [needTokens, setNeedTokens] = useState(false);
 
     // Función para obtener los tokens del usuario
-    const fetchUserTokens = async () => {
+    const updateTokensDisplay = async () => {
         try {
-            // Obtener el usuario del localStorage
-            const userString = localStorage.getItem("user");
-            if (!userString) {
-                return 0;
-            }
-
-            const user = JSON.parse(userString);
-            const userId = user.id;
-
-            // Realizar la petición para obtener tokens
-            const response = await fetch(
-                `${
-                    import.meta.env.VITE_API_URL || "http://localhost:5000"
-                }/api/users/${userId}/tokens`
-            );
-
-            if (!response.ok) {
-                throw new Error("Error al obtener tokens");
-            }
-
-            const data = await response.json();
-            console.log("Tokens obtenidos:", data);
-            return data.tokensAvailable || 0;
+            setLoading(true);
+            const tokensAmount = await getUserTokens();
+            setTokens(tokensAmount);
         } catch (error) {
             console.error("Error al obtener tokens:", error);
-            return 0;
-        }
-    };
-
-    // Función para actualizar los tokens
-    const updateTokensDisplay = async () => {
-        setLoading(true);
-        try {
-            const tokenAmount = await fetchUserTokens();
-            console.log("Actualizando tokens a:", tokenAmount);
-            setTokens(tokenAmount);
-        } catch (error) {
-            console.error("Error al actualizar tokens:", error);
         } finally {
             setLoading(false);
         }
@@ -68,22 +37,37 @@ function Home({ onLogout }) {
         } else {
             setLoading(false);
         }
-    }, [showPaymentGateway]); // Ejecutar cuando cambia showPaymentGateway
+    }, []);
 
+    // Manejar clic en el enlace de tokens/billetera
     const togglePaymentGateway = (e) => {
         e.preventDefault();
-        setShowPaymentGateway(!showPaymentGateway);
+        setShowPaymentGateway(true); // Mostrar la pasarela
+        setNeedTokens(false); // Reiniciar el estado de necesidad de tokens
     };
 
-    // Handler para cuando se completa una compra - Mejorado
+    // Handler para cuando se necesitan tokens (desde Calendar/Hours)
+    const handleNeedTokens = () => {
+        setNeedTokens(true);
+        setShowPaymentGateway(true);
+    };
+
+    // Handler para cuando se completa una compra
     const handlePurchaseComplete = () => {
-        console.log("Compra completada - Actualizando tokens...");
+        updateTokensDisplay(); // Actualizar los tokens
 
-        // Forzar actualización de tokens inmediatamente
-        updateTokensDisplay();
+        // Si la compra fue iniciada por necesidad (desde el calendario)
+        // volver al calendario
+        if (needTokens) {
+            setShowPaymentGateway(false);
+            setNeedTokens(false);
+        }
+    };
 
-        // Cerrar la pasarela después de la compra
-        setShowPaymentGateway(false);
+    // Handler para cuando se realiza una reserva exitosa
+    const handleBookingComplete = () => {
+        console.log("Reserva completada, actualizando tokens");
+        updateTokensDisplay(); // Actualizar los tokens mostrados
     };
 
     return (
@@ -93,15 +77,43 @@ function Home({ onLogout }) {
                     <a
                         className="navbar-brand text-white fw-semibold fs-3"
                         href="#"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            setShowPaymentGateway(false);
+                        }}
                     >
                         TutorSync
                     </a>
 
                     <div className="ms-auto d-flex align-items-center fs-5">
-                        <a className="nav-link text-white me-4" href="#">
-                            <i className="fa-regular fa-user"></i>
+                        {/* Billetera */}
+                        <a
+                            href="#"
+                            className="text-decoration-none nav-link text-white me-5"
+                            onClick={togglePaymentGateway}
+                        >
+                            <i className="fa-solid fa-wallet"></i> :{" "}
+                            {loading ? (
+                                <small
+                                    className="spinner-border spinner-border-sm text-bg-light"
+                                    role="status"
+                                    aria-hidden="true"
+                                ></small>
+                            ) : (
+                                tokens
+                            )}
                         </a>
 
+                        {/* Configuración */}
+                        <a className="nav-link text-white me-4" href="#">
+                            <i className="fa-solid fa-toolbox"></i>
+                        </a>
+
+                        {/* Notificaciones */}
+                        <a className="nav-link text-white me-4" href="#">
+                            <i className="fa-solid fa-bell"></i>
+                        </a>
+                        {/* Cerrar sesión */}
                         <a
                             className="nav-link text-white"
                             href="#"
@@ -121,27 +133,21 @@ function Home({ onLogout }) {
             </div>
             <div>
                 <h2 className="my-5 text-center text-primary">
-                    Welcome to TutorSync{" "}
-                    <span className="text-dark">{username}</span>
+                    Welcome back, <span className="text-dark">{username}</span>
                 </h2>
-                <a
-                    href="#"
-                    className="text-decoration-none"
-                    onClick={togglePaymentGateway}
-                >
-                    <p className="text-center text-primary fs-4">
-                        <i className="fa-solid fa-wallet"></i> :{" "}
-                        {loading ? (
-                            <small
-                                className="spinner-border spinner-border-sm"
-                                role="status"
-                                aria-hidden="true"
-                            ></small>
-                        ) : (
-                            tokens
-                        )}
-                    </p>
-                </a>
+
+                {needTokens && showPaymentGateway && (
+                    <div
+                        className="alert alert-info text-center mx-auto"
+                        style={{ maxWidth: "600px" }}
+                    >
+                        <p>
+                            Necesitas al menos 1 token para reservar una
+                            tutoría.
+                        </p>
+                        <p>Por favor, compra tokens para continuar.</p>
+                    </div>
+                )}
             </div>
             <div className="d-flex flex-grow-1 h-75">
                 {showPaymentGateway ? (
@@ -149,7 +155,10 @@ function Home({ onLogout }) {
                         onPurchaseComplete={handlePurchaseComplete}
                     />
                 ) : (
-                    <Calendar />
+                    <Calendar
+                        onNeedTokens={handleNeedTokens}
+                        onBookingComplete={handleBookingComplete}
+                    />
                 )}
             </div>
         </div>

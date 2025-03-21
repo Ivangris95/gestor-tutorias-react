@@ -3,6 +3,7 @@ const authRoutes = require("./authRoutes");
 const tokenRoutes = require("./tokenRoutes");
 const paymentRoutes = require("./paymentRoutes");
 const timesRoutes = require("./timesRoutes");
+const bookingRoutes = require("./bookingRoutes");
 
 const router = express.Router();
 
@@ -11,6 +12,7 @@ router.use(authRoutes);
 router.use(tokenRoutes);
 router.use(paymentRoutes);
 router.use(timesRoutes);
+router.use(bookingRoutes);
 
 // Ruta de prueba
 router.get("/health", (req, res) => {
