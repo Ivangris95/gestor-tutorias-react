@@ -46,14 +46,14 @@ function Singup({ onAuthenticate }) {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="d-flex flex-column">
+        <form onSubmit={handleSubmit} className="d-flex flex-column px-lg-2">
             {error && (
                 <div className="alert alert-danger" role="alert">
                     {error}
                 </div>
             )}
-            <div className="form-group p-2">
-                <label htmlFor="name" className="mb-2 fs-5 fw-semibold">
+            <div className="form-group mb-3">
+                <label htmlFor="name" className="mb-2 fw-semibold">
                     Username
                 </label>
                 <input
@@ -66,10 +66,10 @@ function Singup({ onAuthenticate }) {
                     required
                 />
             </div>
-            <div className="form-group p-2">
+            <div className="form-group mb-3">
                 <label
                     htmlFor="exampleInputEmail1"
-                    className="mb-2 fs-5 fw-semibold"
+                    className="mb-2 fw-semibold"
                 >
                     Email address
                 </label>
@@ -84,10 +84,10 @@ function Singup({ onAuthenticate }) {
                     required
                 />
             </div>
-            <div className="form-group p-2">
+            <div className="form-group mb-3">
                 <label
                     htmlFor="exampleInputPassword1"
-                    className="mb-2 fs-5 fw-semibold"
+                    className="mb-2 fw-semibold"
                 >
                     Password
                 </label>
@@ -101,11 +101,8 @@ function Singup({ onAuthenticate }) {
                     required
                 />
             </div>
-            <div className="form-group p-2">
-                <label
-                    htmlFor="confirmPassword"
-                    className="mb-2 fs-5 fw-semibold"
-                >
+            <div className="form-group mb-3">
+                <label htmlFor="confirmPassword" className="mb-2 fw-semibold">
                     Confirm Password
                 </label>
                 <input
@@ -118,7 +115,7 @@ function Singup({ onAuthenticate }) {
                     required
                 />
             </div>
-            <div className="form-group text-lg-center p-4 mt-3">
+            <div className="form-group text-center mt-3">
                 <button type="submit" className="btn btn-primary w-100">
                     {loading ? "Processing..." : "Sign up"}
                 </button>

@@ -157,3 +157,51 @@ exports.getBookedSlots = async (req, res) => {
         });
     }
 };
+
+/**
+ * Obtener las horas disponibles para una fecha específica
+ */
+exports.getAvailableHoursForDate = async (req, res) => {
+    try {
+        const { date } = req.params;
+
+        // Validar formato de fecha
+        if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            return res.status(400).json({
+                success: false,
+                message: "Formato de fecha inválido. Use YYYY-MM-DD",
+            });
+        }
+
+        // Obtener las horas disponibles para esta fecha
+        // Solo mostramos los horarios que NO estén reservados
+        const availableHours = await db.query(
+            `
+            SELECT 
+                a.slot_id, 
+                a.slot_date, 
+                a.start_time, 
+                a.end_time, 
+                a.is_booked,
+                p.time_id
+            FROM 
+                available_slots a
+            JOIN 
+                predefined_times p ON a.start_time = p.start_time AND a.end_time = p.end_time
+            WHERE 
+                a.slot_date = ?
+            ORDER BY 
+                a.start_time ASC
+        `,
+            [date]
+        );
+
+        res.json(availableHours);
+    } catch (error) {
+        console.error("Error al obtener horas disponibles:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error en el servidor",
+        });
+    }
+};

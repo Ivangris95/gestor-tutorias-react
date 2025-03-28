@@ -36,8 +36,8 @@ function SingIn({ onAuthenticate }) {
     };
 
     return (
-        <div>
-            <h3 className="mb-4">Iniciar Sesión</h3>
+        <div className="px-lg-3">
+            <h3 className="mb-4 text-center">Sing In</h3>
 
             {error && <div className="alert alert-danger">{error}</div>}
 
@@ -46,7 +46,7 @@ function SingIn({ onAuthenticate }) {
                     <input
                         type="text"
                         className="form-control"
-                        placeholder="Nombre de usuario"
+                        placeholder="Username"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         required
@@ -57,7 +57,7 @@ function SingIn({ onAuthenticate }) {
                     <input
                         type="password"
                         className="form-control"
-                        placeholder="Contraseña"
+                        placeholder="Password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required

@@ -203,3 +203,44 @@ exports.deletePredefinedTime = async (req, res) => {
         });
     }
 };
+
+/**
+ * Obtener detalles de una hora predefinida específica
+ */
+exports.getPredefinedTime = async (req, res) => {
+    try {
+        const { timeId } = req.params;
+
+        // Validar ID
+        if (!timeId || isNaN(timeId)) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de hora inválido",
+            });
+        }
+
+        // Obtener detalles de la hora predefinida
+        const times = await db.query(
+            "SELECT * FROM predefined_times WHERE time_id = ?",
+            [timeId]
+        );
+
+        if (times.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Hora no encontrada",
+            });
+        }
+
+        res.json({
+            success: true,
+            time: times[0],
+        });
+    } catch (error) {
+        console.error("Error al obtener detalles de hora:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error en el servidor",
+        });
+    }
+};

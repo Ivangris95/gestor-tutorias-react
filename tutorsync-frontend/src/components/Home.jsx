@@ -2,14 +2,17 @@ import "animate.css";
 import { useState, useEffect } from "react";
 import Calendar from "./Views/Calendar";
 import PaymentGateway from "./PaymentComponents/PaymentGateway";
+import AdminPanel from "./AdminComponents/AdminPanel";
 import { getUserTokens } from "../services/tokenService";
 
 function Home({ onLogout }) {
     const [showPaymentGateway, setShowPaymentGateway] = useState(false);
+    const [showAdminPanel, setShowAdminPanel] = useState(false);
     const [username, setUsername] = useState("");
     const [tokens, setTokens] = useState(0);
     const [loading, setLoading] = useState(true);
     const [needTokens, setNeedTokens] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false); // Estado para rol admin
 
     // Función para obtener los tokens del usuario
     const updateTokensDisplay = async () => {
@@ -31,6 +34,10 @@ function Home({ onLogout }) {
         if (userString) {
             const user = JSON.parse(userString);
             setUsername(user.username);
+
+            // Verificar si el usuario es administrador usando el campo correcto (isAdmin)
+            console.log("Objeto usuario:", user);
+            setIsAdmin(user.isAdmin === true || user.isAdmin === 1);
 
             // Obtener tokens del usuario
             updateTokensDisplay();
@@ -71,15 +78,18 @@ function Home({ onLogout }) {
     };
 
     return (
-        <div style={{ height: "100vh" }} className="d-flex flex-column">
-            <div className="navbar navbar-expand-lg bg-primary">
-                <div className="container-fluid px-5">
+        <div className="d-flex flex-column vh-100">
+            {/* Navbar */}
+            <div className="navbar navbar-expand-lg bg-primary position-relative">
+                <div className="container-fluid px-3 px-md-5">
+                    {/* Logo */}
                     <a
                         className="navbar-brand text-white fw-semibold fs-3"
                         href="#"
                         onClick={(e) => {
                             e.preventDefault();
                             setShowPaymentGateway(false);
+                            setShowAdminPanel(false);
                         }}
                     >
                         TutorSync
@@ -104,10 +114,20 @@ function Home({ onLogout }) {
                             )}
                         </a>
 
-                        {/* Configuración */}
-                        <a className="nav-link text-white me-4" href="#">
-                            <i className="fa-solid fa-toolbox"></i>
-                        </a>
+                        {/* Configuración - Solo visible para administradores */}
+                        {isAdmin && (
+                            <a
+                                className="nav-link text-white me-4"
+                                href="#"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    setShowAdminPanel(true);
+                                    setShowPaymentGateway(false);
+                                }}
+                            >
+                                <i className="fa-solid fa-toolbox"></i>
+                            </a>
+                        )}
 
                         {/* Notificaciones */}
                         <a className="nav-link text-white me-4" href="#">
@@ -142,10 +162,9 @@ function Home({ onLogout }) {
                         style={{ maxWidth: "600px" }}
                     >
                         <p>
-                            Necesitas al menos 1 token para reservar una
-                            tutoría.
+                            You need at least 1 token to book a tutoring session
                         </p>
-                        <p>Por favor, compra tokens para continuar.</p>
+                        <p>Please purchase tokens to continue.</p>
                     </div>
                 )}
             </div>
@@ -154,6 +173,8 @@ function Home({ onLogout }) {
                     <PaymentGateway
                         onPurchaseComplete={handlePurchaseComplete}
                     />
+                ) : showAdminPanel ? (
+                    <AdminPanel />
                 ) : (
                     <Calendar
                         onNeedTokens={handleNeedTokens}

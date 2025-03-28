@@ -20,54 +20,90 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
     };
 
     useEffect(() => {
-        // Función para obtener los horarios predefinidos y las reservas
         const fetchData = async () => {
+            if (!selectedDate) {
+                setHours([]);
+                setLoading(false);
+                return;
+            }
+
             try {
                 setLoading(true);
+                const formattedDate = formatDate(selectedDate);
 
-                // 1. Obtener todos los horarios predefinidos
-                const timesResponse = await fetch(
+                // 1. Obtener TODAS las horas predefinidas
+                const predefinedTimesResponse = await fetch(
                     "http://localhost:5000/api/predefined-times"
                 );
-                const timesData = await timesResponse.json();
 
-                if (!timesData.success) {
-                    throw new Error("Error al cargar los horarios");
+                if (!predefinedTimesResponse.ok) {
+                    throw new Error("Error al cargar horarios predefinidos");
                 }
 
-                setHours(timesData.times);
+                const predefinedTimesData =
+                    await predefinedTimesResponse.json();
 
-                // 2. Si hay una fecha seleccionada, obtener las reservas para esa fecha
-                if (selectedDate) {
-                    try {
-                        const formattedDate = formatDate(selectedDate);
-                        const bookedResponse = await fetch(
-                            `http://localhost:5000/api/bookings/date/${formattedDate}`
-                        );
+                if (!predefinedTimesData.success) {
+                    throw new Error("Error al obtener horarios predefinidos");
+                }
 
-                        if (bookedResponse.ok) {
-                            const bookedData = await bookedResponse.json();
-                            if (bookedData.success) {
-                                setBookedSlots(bookedData.bookedSlots);
-                            }
-                        }
-                    } catch (err) {
-                        console.error("Error al obtener reservas:", err);
-                        // No mostramos el error al usuario para no afectar la experiencia
+                // 2. Obtener las horas DESHABILITADAS para esta fecha específica
+                const disabledHoursResponse = await fetch(
+                    `http://localhost:5000/api/disabled-hours/${formattedDate}`
+                );
+
+                let disabledTimeIds = [];
+
+                if (disabledHoursResponse.ok) {
+                    const disabledData = await disabledHoursResponse.json();
+                    if (disabledData.success) {
+                        disabledTimeIds = disabledData.disabledHours || [];
                     }
                 }
 
+                // 3. Filtrar las horas predefinidas para excluir las deshabilitadas
+                let availableHours = predefinedTimesData.times
+                    .filter((time) => !disabledTimeIds.includes(time.time_id))
+                    .map((time) => ({
+                        ...time,
+                        is_booked: false, // Inicialmente no están reservadas
+                    }));
+
+                // 2. Obtener las reservas para esta fecha para saber cuáles están ocupadas
+                const bookedResponse = await fetch(
+                    `http://localhost:5000/api/bookings/date/${formattedDate}`
+                );
+
+                if (bookedResponse.ok) {
+                    const bookedData = await bookedResponse.json();
+                    if (bookedData.success) {
+                        setBookedSlots(bookedData.bookedSlots || []);
+
+                        // Marcar las horas reservadas
+                        for (const hour of availableHours) {
+                            const isBooked = bookedData.bookedSlots.some(
+                                (slot) => slot.start_time === hour.start_time
+                            );
+                            if (isBooked) {
+                                hour.is_booked = true;
+                            }
+                        }
+                    }
+                }
+
+                setHours(availableHours);
                 setError(null);
             } catch (err) {
-                setError("Error de conexión al servidor");
+                setError("Error al cargar horarios disponibles");
                 console.error("Error fetching data:", err);
+                setHours([]);
             } finally {
                 setLoading(false);
             }
         };
 
         fetchData();
-    }, [selectedDate]); // Re-ejecutar cuando cambia la fecha seleccionada
+    }, [selectedDate]);
 
     // Función para formatear la hora (HH:MM:SS → HH:MM)
     const formatTime = (timeString) => {
@@ -75,8 +111,8 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
     };
 
     // Verificar si un horario ya está reservado
-    const isTimeBooked = (startTime) => {
-        return bookedSlots.some((slot) => slot.start_time === startTime);
+    const isTimeBooked = (timeId) => {
+        return bookedSlots.some((slot) => slot.time_id === timeId);
     };
 
     // Verificar tokens y realizar reserva
@@ -129,7 +165,7 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                 },
                 body: JSON.stringify({
                     userId: userData.id,
-                    timeId: hour.time_id,
+                    slotId: hour.slot_id, // Usamos slot_id en lugar de time_id
                     slotDate: formatDate(selectedDate),
                 }),
             });
@@ -160,7 +196,7 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                 // Actualizar la lista de horarios reservados localmente
                 setBookedSlots([
                     ...bookedSlots,
-                    { start_time: hour.start_time },
+                    { time_id: hour.time_id, start_time: hour.start_time },
                 ]);
 
                 if (onHourSelect) {
@@ -176,7 +212,9 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
     };
 
     if (loading) {
-        return <div className="text-center p-4">Cargando horarios...</div>;
+        return (
+            <div className="text-center p-4">Loading available times...</div>
+        );
     }
 
     if (error) {
@@ -188,12 +226,9 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
             {hours.length > 0 ? (
                 hours.map((hour) => {
                     // Verificar si esta hora ya está reservada
-                    const booked = isTimeBooked(hour.start_time);
+                    const booked = hour.is_booked || isTimeBooked(hour.time_id);
 
-                    // Opción 1: No mostrar los horarios ya reservados
-                    // if (booked) return null;
-
-                    // Opción 2: Mostrar todos los horarios, pero deshabilitar los ya reservados
+                    // Mostrar todos los horarios, pero deshabilitar los ya reservados
                     return (
                         <button
                             key={hour.time_id}
@@ -205,15 +240,18 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                                 bookingInProgress || !selectedDate || booked
                             }
                         >
-                            {formatTime(hour.start_time)}
+                            {formatTime(hour.start_time)} -{" "}
+                            {formatTime(hour.end_time)}
                             {booked && (
-                                <span className="ms-2">(Reservado)</span>
+                                <span className="ms-2">(Reserved.)</span>
                             )}
                         </button>
                     );
                 })
             ) : (
-                <p className="text-center">No hay horarios disponibles</p>
+                <p className="text-center">
+                    There are no available times for this date.
+                </p>
             )}
         </div>
     );

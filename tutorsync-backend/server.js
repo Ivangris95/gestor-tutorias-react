@@ -8,6 +8,8 @@ dotenv.config({ path: path.resolve(__dirname, "./.env") });
 
 // Importar rutas
 const routes = require("./routes");
+const adminRoutes = require("./routes/adminRoutes");
+const disabledHoursRoutes = require("./routes/disabledHoursRoutes");
 
 const app = express();
 
@@ -17,6 +19,8 @@ app.use(cors());
 
 // Rutas
 app.use("/api", routes);
+app.use("/api/admin", adminRoutes);
+app.use("/api", disabledHoursRoutes);
 
 // Puerto del servidor
 const port = process.env.PORT || 5000;

@@ -1,15 +1,16 @@
 /**
  * Middleware para verificar si el usuario está autenticado
  */
-exports.protect = (req, res, next) => {
-    // Para implementar después. Por ahora todos los endpoints son públicos
+
+const authMiddleware = async (req, res, next) => {
+    // Versión de desarrollo/prototipo que no verifica realmente la autenticación
+    req.user = {
+        user_id: 1,
+        username: "admin_user",
+        email_address: "admin@example.com",
+        is_admin: 1, // Es administrador
+    };
     next();
 };
 
-/**
- * Middleware para verificar si el usuario es administrador
- */
-exports.restrictTo = (req, res, next) => {
-    // Para implementar después si es necesario
-    next();
-};
+module.exports = authMiddleware;

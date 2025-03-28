@@ -4,6 +4,7 @@ const tokenRoutes = require("./tokenRoutes");
 const paymentRoutes = require("./paymentRoutes");
 const timesRoutes = require("./timesRoutes");
 const bookingRoutes = require("./bookingRoutes");
+const disabledHoursRoutes = require("./disabledHoursRoutes");
 
 const router = express.Router();
 
@@ -13,6 +14,7 @@ router.use(tokenRoutes);
 router.use(paymentRoutes);
 router.use(timesRoutes);
 router.use(bookingRoutes);
+router.use(disabledHoursRoutes);
 
 // Ruta de prueba
 router.get("/health", (req, res) => {
