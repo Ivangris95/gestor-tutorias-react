@@ -10,4 +10,12 @@ router.get(
     bookingController.getAvailableHoursForDate
 );
 
+router.get("/users/:userId/bookings", bookingController.getUserBookings);
+router.put(
+    "/users/:userId/notifications/read",
+    bookingController.markBookingNotificationsAsRead
+);
+
+router.get("/bookings/:bookingId/zoom", bookingController.generateZoomLink);
+
 module.exports = router;

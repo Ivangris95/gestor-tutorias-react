@@ -1,8 +1,9 @@
 import "animate.css";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Calendar from "./Views/Calendar";
 import PaymentGateway from "./PaymentComponents/PaymentGateway";
 import AdminPanel from "./AdminComponents/AdminPanel";
+import Navbar from "../components/Navbar/Navbar";
 import { getUserTokens } from "../services/tokenService";
 
 function Home({ onLogout }) {
@@ -12,7 +13,8 @@ function Home({ onLogout }) {
     const [tokens, setTokens] = useState(0);
     const [loading, setLoading] = useState(true);
     const [needTokens, setNeedTokens] = useState(false);
-    const [isAdmin, setIsAdmin] = useState(false); // Estado para rol admin
+    const [isAdmin, setIsAdmin] = useState(false);
+    const navbarRef = useRef(); // Referencia para pasar al Navbar
 
     // Función para obtener los tokens del usuario
     const updateTokensDisplay = async () => {
@@ -35,7 +37,7 @@ function Home({ onLogout }) {
             const user = JSON.parse(userString);
             setUsername(user.username);
 
-            // Verificar si el usuario es administrador usando el campo correcto (isAdmin)
+            // Verificar si el usuario es administrador
             console.log("Objeto usuario:", user);
             setIsAdmin(user.isAdmin === true || user.isAdmin === 1);
 
@@ -47,10 +49,11 @@ function Home({ onLogout }) {
     }, []);
 
     // Manejar clic en el enlace de tokens/billetera
-    const togglePaymentGateway = (e) => {
-        e.preventDefault();
-        setShowPaymentGateway(true); // Mostrar la pasarela
-        setNeedTokens(false); // Reiniciar el estado de necesidad de tokens
+    const handleTogglePaymentGateway = (value) => {
+        setShowPaymentGateway(value);
+        if (!value) {
+            setNeedTokens(false); // Reiniciar el estado de necesidad de tokens
+        }
     };
 
     // Handler para cuando se necesitan tokens (desde Calendar/Hours)
@@ -75,82 +78,50 @@ function Home({ onLogout }) {
     const handleBookingComplete = () => {
         console.log("Reserva completada, actualizando tokens");
         updateTokensDisplay(); // Actualizar los tokens mostrados
+
+        // Activar la animación de la campana cuando se completa una reserva
+        if (navbarRef.current) {
+            // Animar la campana
+            const bellIcon = navbarRef.current.querySelector(
+                ".notification-bell .fa-bell"
+            );
+            if (bellIcon) {
+                bellIcon.classList.add(
+                    "animate__animated",
+                    "animate__swing",
+                    "animate__repeat-2"
+                );
+                setTimeout(() => {
+                    bellIcon.classList.remove(
+                        "animate__animated",
+                        "animate__swing",
+                        "animate__repeat-2"
+                    );
+                }, 2000);
+            }
+        }
+    };
+
+    // Handler para mostrar/ocultar el panel de administración
+    const handleShowAdminPanel = (value) => {
+        setShowAdminPanel(value);
     };
 
     return (
         <div className="d-flex flex-column vh-100">
-            {/* Navbar */}
-            <div className="navbar navbar-expand-lg bg-primary position-relative">
-                <div className="container-fluid px-3 px-md-5">
-                    {/* Logo */}
-                    <a
-                        className="navbar-brand text-white fw-semibold fs-3"
-                        href="#"
-                        onClick={(e) => {
-                            e.preventDefault();
-                            setShowPaymentGateway(false);
-                            setShowAdminPanel(false);
-                        }}
-                    >
-                        TutorSync
-                    </a>
-
-                    <div className="ms-auto d-flex align-items-center fs-5">
-                        {/* Billetera */}
-                        <a
-                            href="#"
-                            className="text-decoration-none nav-link text-white me-5"
-                            onClick={togglePaymentGateway}
-                        >
-                            <i className="fa-solid fa-wallet"></i> :{" "}
-                            {loading ? (
-                                <small
-                                    className="spinner-border spinner-border-sm text-bg-light"
-                                    role="status"
-                                    aria-hidden="true"
-                                ></small>
-                            ) : (
-                                tokens
-                            )}
-                        </a>
-
-                        {/* Configuración - Solo visible para administradores */}
-                        {isAdmin && (
-                            <a
-                                className="nav-link text-white me-4"
-                                href="#"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    setShowAdminPanel(true);
-                                    setShowPaymentGateway(false);
-                                }}
-                            >
-                                <i className="fa-solid fa-toolbox"></i>
-                            </a>
-                        )}
-
-                        {/* Notificaciones */}
-                        <a className="nav-link text-white me-4" href="#">
-                            <i className="fa-solid fa-bell"></i>
-                        </a>
-                        {/* Cerrar sesión */}
-                        <a
-                            className="nav-link text-white"
-                            href="#"
-                            onClick={(e) => {
-                                e.preventDefault();
-
-                                localStorage.removeItem("user");
-                                if (onLogout) {
-                                    onLogout();
-                                }
-                            }}
-                        >
-                            <i className="fas fa-sign-out-alt"></i>
-                        </a>
-                    </div>
-                </div>
+            {/* Navbar - Pasamos la referencia para poder animar la campana */}
+            <div ref={navbarRef}>
+                <Navbar
+                    username={username}
+                    tokens={tokens}
+                    loading={loading}
+                    isAdmin={isAdmin}
+                    onLogout={onLogout}
+                    onTogglePaymentGateway={handleTogglePaymentGateway}
+                    onShowAdminPanel={handleShowAdminPanel}
+                />
             </div>
+
             <div>
                 <h2 className="my-5 text-center text-primary">
                     Welcome back, <span className="text-dark">{username}</span>
@@ -168,6 +139,7 @@ function Home({ onLogout }) {
                     </div>
                 )}
             </div>
+
             <div className="d-flex flex-grow-1 h-75">
                 {showPaymentGateway ? (
                     <PaymentGateway

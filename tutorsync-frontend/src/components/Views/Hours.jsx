@@ -122,6 +122,8 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
             return;
         }
 
+        console.log("Objeto hour seleccionado:", hour);
+
         setBookingInProgress(true);
 
         try {
@@ -157,17 +159,27 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                 return;
             }
 
+            // Verificar que la hora tiene timeId
+            if (!hour.time_id) {
+                throw new Error("La hora seleccionada no tiene un ID válido");
+            }
+
+            // Datos a enviar al servidor
+            const bookingData = {
+                userId: userData.id,
+                timeId: hour.time_id, // Cambiado de slotId a timeId
+                slotDate: formatDate(selectedDate),
+            };
+
+            console.log("Datos enviados para reserva:", bookingData);
+
             // Si tiene tokens, intentar la reserva
             const response = await fetch("http://localhost:5000/api/bookings", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({
-                    userId: userData.id,
-                    slotId: hour.slot_id, // Usamos slot_id en lugar de time_id
-                    slotDate: formatDate(selectedDate),
-                }),
+                body: JSON.stringify(bookingData),
             });
 
             if (!response.ok) {
@@ -234,7 +246,7 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                             key={hour.time_id}
                             className={`btn ${
                                 booked ? "btn-secondary" : "btn-outline-primary"
-                            } w-50 m-2`}
+                            } w-75 m-2`}
                             onClick={() => !booked && handleHourSelect(hour)}
                             disabled={
                                 bookingInProgress || !selectedDate || booked
@@ -243,7 +255,7 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                             {formatTime(hour.start_time)} -{" "}
                             {formatTime(hour.end_time)}
                             {booked && (
-                                <span className="ms-2">(Reserved.)</span>
+                                <i className="fa-solid fa-check ms-2"></i>
                             )}
                         </button>
                     );
