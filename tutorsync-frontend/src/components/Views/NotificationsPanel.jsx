@@ -119,7 +119,7 @@ function NotificationsPanel() {
         if (notifications.length > 0) {
             triggerAnimation();
         }
-    }, [notifications.length]); // Dependencia en la cantidad de notificaciones
+    }, [notifications.length]);
 
     // Controlar apertura y cierre del panel
     const togglePanel = (e) => {
@@ -186,7 +186,7 @@ function NotificationsPanel() {
     };
 
     return (
-        <div className="position-relative">
+        <div className="position-relative d-flex justify-content-center align-cotent-center">
             {/* Icono de campana con indicador de notificaciones y animación */}
             <a
                 href="#"
@@ -210,9 +210,9 @@ function NotificationsPanel() {
             {isOpen && (
                 <div
                     ref={panelRef}
-                    className="card position-absolute end-0 mt-2 shadow animate__animated animate__fadeIn"
+                    className="card position-absolute top-100 end-25 translate-middle-x shadow animate__animated animate__fadeIn mx-auto"
                     style={{
-                        width: "350px",
+                        width: "300px",
                         maxHeight: "500px",
                         overflowY: "auto",
                         zIndex: 1050,
@@ -296,9 +296,7 @@ function NotificationsPanel() {
                                             </p>
 
                                             <p className="mb-1">
-                                                <strong>Tutor:</strong>{" "}
-                                                {booking.tutor_name ||
-                                                    "Assigned professor"}
+                                                <strong>Tutor: </strong>Jhon Doe
                                             </p>
 
                                             {/* Botón para unirse a Zoom con ícono destacado */}

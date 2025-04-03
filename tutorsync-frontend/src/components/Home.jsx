@@ -14,7 +14,7 @@ function Home({ onLogout }) {
     const [loading, setLoading] = useState(true);
     const [needTokens, setNeedTokens] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
-    const navbarRef = useRef(); // Referencia para pasar al Navbar
+    const navbarRef = useRef();
 
     // Función para obtener los tokens del usuario
     const updateTokensDisplay = async () => {
@@ -65,6 +65,7 @@ function Home({ onLogout }) {
     // Handler para cuando se completa una compra
     const handlePurchaseComplete = () => {
         updateTokensDisplay(); // Actualizar los tokens
+        setShowPaymentGateway(false);
 
         // Si la compra fue iniciada por necesidad (desde el calendario)
         // volver al calendario

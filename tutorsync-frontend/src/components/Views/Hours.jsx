@@ -110,6 +110,22 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
         return timeString ? timeString.substring(0, 5) : "";
     };
 
+    // Función para verificar si una hora ya ha pasado
+    const isTimePassed = (startTimeString) => {
+        if (!selectedDate) return false;
+
+        // Crear un objeto Date completo combinando la fecha seleccionada y la hora
+        const [hours, minutes] = startTimeString.split(":");
+        const fullDateTime = new Date(selectedDate);
+        fullDateTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+
+        // Obtener la hora actual
+        const now = new Date();
+
+        // Comparar si la hora seleccionada es anterior a la hora actual
+        return fullDateTime < now;
+    };
+
     // Verificar si un horario ya está reservado
     const isTimeBooked = (timeId) => {
         return bookedSlots.some((slot) => slot.time_id === timeId);
@@ -237,10 +253,13 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
         <div className="d-flex flex-column align-items-center w-100 overflow-y-auto p-2">
             {hours.length > 0 ? (
                 hours.map((hour) => {
-                    // Verificar si esta hora ya está reservada
-                    const booked = hour.is_booked || isTimeBooked(hour.time_id);
+                    // Verificar si esta hora ya está reservada o ha pasado
+                    const booked =
+                        hour.is_booked ||
+                        isTimeBooked(hour.time_id) ||
+                        isTimePassed(hour.start_time);
 
-                    // Mostrar todos los horarios, pero deshabilitar los ya reservados
+                    // Mostrar todos los horarios, pero deshabilitar los ya reservados o pasados
                     return (
                         <button
                             key={hour.time_id}

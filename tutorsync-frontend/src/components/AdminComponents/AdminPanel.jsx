@@ -6,7 +6,7 @@ function AdminPanel() {
     const [activeTab, setActiveTab] = useState("hours");
 
     return (
-        <div className="container-fluid m-5 mb-0">
+        <div className="container-fluid m-0 m-lg-5 mb-0">
             <div className="row mb-4">
                 <div className="col">
                     <h3 className="text-primary">Admin Panel</h3>

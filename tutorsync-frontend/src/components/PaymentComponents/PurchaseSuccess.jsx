@@ -4,17 +4,20 @@ const PurchaseSuccess = ({ tokens, orderID, onButtonClick }) => {
     return (
         <div className="container py-4">
             <div className="alert alert-success text-center p-5">
-                <h2 className="mb-4">¡Compra Exitosa!</h2>
+                <h2 className="mb-4">Successful Purchase!</h2>
                 <p className="lead">
-                    Has adquirido {tokens} token{tokens > 1 ? "s" : ""}.
+                    You have purchased {tokens} token{tokens > 1 ? "s" : ""}.
                 </p>
-                <p className="mb-4">ID de Orden: {orderID}</p>
-                <p>Los tokens se han añadido a tu cuenta.</p>
+                <p className="mb-4">Order ID: {orderID}</p>
+                <p>The tokens have been added to your account.</p>
                 <button
                     className="btn btn-primary mt-3"
-                    onClick={onButtonClick}
+                    onClick={() => {
+                        console.log("Botón pulsado directamente");
+                        onButtonClick();
+                    }}
                 >
-                    Volver al calendario
+                    Return to calendar
                 </button>
             </div>
         </div>

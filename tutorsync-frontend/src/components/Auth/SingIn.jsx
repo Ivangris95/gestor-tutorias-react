@@ -37,7 +37,7 @@ function SingIn({ onAuthenticate }) {
 
     return (
         <div className="px-lg-3">
-            <h3 className="mb-4 text-center">Sing In</h3>
+            <h3 className="mb-5 text-center">Sing In</h3>
 
             {error && <div className="alert alert-danger">{error}</div>}
 
@@ -53,7 +53,7 @@ function SingIn({ onAuthenticate }) {
                     />
                 </div>
 
-                <div className="mb-3">
+                <div className="mb-5">
                     <input
                         type="password"
                         className="form-control"
@@ -66,7 +66,7 @@ function SingIn({ onAuthenticate }) {
 
                 <button
                     type="submit"
-                    className="btn btn-primary w-100"
+                    className="btn btn-primary w-100 mt-5"
                     disabled={loading}
                 >
                     {loading ? "Cargando..." : "Iniciar Sesión"}
