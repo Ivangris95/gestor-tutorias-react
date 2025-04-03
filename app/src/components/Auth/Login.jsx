@@ -33,15 +33,48 @@ function Login({ onLoginSuccess }) {
                             {/* Panel izquierdo - Solo visible en md y más grande */}
                             <div className="col-lg-7 col-md-6 bg-primary text-white d-none d-md-block">
                                 <div className="d-flex flex-column justify-content-center align-items-center h-100 p-5">
-                                    <h1 className="mb-4">TutorSync</h1>
-                                    <p className="m-4">
-                                        Lorem ipsum dolor sit amet consectetur
-                                        adipisicing elit. Esse commodi error
-                                        eaque in. Provident dignissimos esse non
-                                        labore nulla? Quibusdam distinctio
-                                        necessitatibus a ex ratione illo nam
-                                        excepturi ad et?
+                                    <h1
+                                        className="mb-4 fw-bold"
+                                        style={{
+                                            fontSize: "2.5rem",
+                                            letterSpacing: "-0.5px",
+                                        }}
+                                    >
+                                        TutorSync
+                                        <span className="ms-2 badge bg-white text-primary fs-6 align-middle">
+                                            PRO
+                                        </span>
+                                    </h1>
+                                    <p
+                                        className="m-4 lead"
+                                        style={{
+                                            lineHeight: "1.8",
+                                            fontSize: "1.1rem",
+                                            fontWeight: 400,
+                                            textAlign: "center",
+                                        }}
+                                    >
+                                        TutorSync es una plataforma educativa de
+                                        vanguardia que conecta a profesionales e
+                                        instructores con estudiantes en un
+                                        entorno de aprendizaje dinámico y
+                                        personalizado.
+                                        <br />
+                                        <br />
+                                        Facilitamos la excelencia educativa
+                                        mediante herramientas innovadoras que
+                                        permiten crear, gestionar y participar
+                                        en experiencias formativas de máxima
+                                        calidad.
                                     </p>
+                                    <div className="mt-3 d-flex gap-2">
+                                        <span className="badge bg-white text-primary fs-6">
+                                            Tutoriales en vivo
+                                        </span>
+                                        <span className="badge bg-white text-primary fs-6">
+                                            Aprendizaje interactivo
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -50,14 +83,19 @@ function Login({ onLoginSuccess }) {
                                 <div className="card-body p-4">
                                     {/* Logo y texto visible solo en dispositivos pequeños */}
                                     <div className="d-md-none text-center mb-4">
-                                        <h1 className="text-primary">
+                                        <h1
+                                            className="text-primary fw-bold"
+                                            style={{ fontSize: "2rem" }}
+                                        >
                                             TutorSync
+                                            <span className="ms-2 badge bg-primary text-white fs-6 align-middle">
+                                                PRO
+                                            </span>
                                         </h1>
                                         <p className="text-muted mb-4">
-                                            Lorem ipsum dolor sit amet
-                                            consectetur adipisicing elit. Esse
-                                            commodi error eaque in. Provident
-                                            dignissimos esse non labore nulla?
+                                            La plataforma educativa que
+                                            transforma la manera de enseñar y
+                                            aprender en línea.
                                         </p>
                                     </div>
 

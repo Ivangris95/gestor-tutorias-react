@@ -22,8 +22,15 @@ function Navbar({
                         onTogglePaymentGateway(false);
                         onShowAdminPanel(false);
                     }}
+                    style={{
+                        fontSize: "2.5rem",
+                        letterSpacing: "-0.5px",
+                    }}
                 >
                     TutorSync
+                    <span className="ms-2 badge bg-white text-primary fs-6 align-middle">
+                        PRO
+                    </span>
                 </a>
 
                 <div className="ms-auto d-flex align-items-center fs-5">

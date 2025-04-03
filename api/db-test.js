@@ -3,7 +3,7 @@ const dotenv = require("dotenv");
 const path = require("path");
 
 // Cargar variables de entorno
-dotenv.config({ path: path.resolve(__dirname, "../.env") });
+dotenv.config({ path: path.resolve(__dirname, "./.env") });
 
 // Configuración de la conexión
 const connection = mysql.createConnection({
