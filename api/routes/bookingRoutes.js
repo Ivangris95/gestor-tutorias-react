@@ -18,4 +18,7 @@ router.put(
 
 router.get("/bookings/:bookingId/zoom", bookingController.generateZoomLink);
 
+// Ruta para cancelar una reserva
+router.delete("/bookings/:bookingId/cancel", bookingController.cancelBooking);
+
 module.exports = router;

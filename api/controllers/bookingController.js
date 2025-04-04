@@ -136,6 +136,8 @@ exports.createBooking = async (req, res) => {
             [userId, slotId]
         );
 
+        const bookingId = bookingResult.insertId;
+
         // 6. Restar un token al usuario
         await connection.execute(
             "UPDATE tokens SET tokens_available = tokens_available - 1, tokens_used = tokens_used + 1 WHERE user_id = ?",
@@ -154,7 +156,7 @@ exports.createBooking = async (req, res) => {
         res.status(201).json({
             success: true,
             message: "Reserva creada correctamente",
-            bookingId: bookingResult.insertId,
+            bookingId: bookingId,
             tokensRemaining: updatedTokens[0].tokens_available,
         });
     } catch (error) {
@@ -187,9 +189,10 @@ exports.getBookedSlots = async (req, res) => {
         }
 
         const [bookedSlots] = await db.pool.query(
-            `SELECT s.slot_id, s.start_time, s.end_time
+            `SELECT s.slot_id, s.start_time, s.end_time, b.user_id, p.time_id, b.booking_id
             FROM available_slots s
             JOIN bookings b ON s.slot_id = b.slot_id
+            JOIN predefined_times p ON s.start_time = p.start_time AND s.end_time = p.end_time
             WHERE s.slot_date = ? AND b.status != 'cancelled'`,
             [date]
         );
@@ -206,6 +209,109 @@ exports.getBookedSlots = async (req, res) => {
             message: "Error al obtener horarios reservados",
             error: error.message,
         });
+    }
+};
+
+/**
+ * Cancela una reserva existente y devuelve el token al usuario
+ */
+exports.cancelBooking = async (req, res) => {
+    const connection = await db.getConnection();
+
+    try {
+        const { bookingId } = req.params;
+        const { userId } = req.body;
+
+        // Validación básica
+        if (!bookingId || !userId) {
+            return res.status(400).json({
+                success: false,
+                message: "Se requiere el ID de reserva y el ID de usuario",
+            });
+        }
+
+        // Comenzar transacción
+        await connection.beginTransaction();
+
+        // 1. Verificar que la reserva existe y pertenece al usuario
+        const [bookings] = await connection.execute(
+            `SELECT b.*, a.slot_date, a.slot_id, a.start_time
+             FROM bookings b
+             JOIN available_slots a ON b.slot_id = a.slot_id
+             WHERE b.booking_id = ? AND b.user_id = ?`,
+            [bookingId, userId]
+        );
+
+        if (bookings.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({
+                success: false,
+                message: "Reserva no encontrada o no pertenece al usuario",
+            });
+        }
+
+        const booking = bookings[0];
+
+        // 2. Verificar que la reserva no haya pasado ya
+        const bookingDate = new Date(booking.slot_date);
+        const [hours, minutes] = booking.start_time.split(":");
+        bookingDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+
+        const now = new Date();
+        if (bookingDate < now) {
+            await connection.rollback();
+            return res.status(400).json({
+                success: false,
+                message: "No se puede cancelar una reserva que ya ha pasado",
+            });
+        }
+
+        // 3. Actualizar el estado de la reserva a 'cancelled'
+        await connection.execute(
+            "UPDATE bookings SET status = 'cancelled' WHERE booking_id = ?",
+            [bookingId]
+        );
+
+        // 4. Marcar el slot como disponible nuevamente
+        await connection.execute(
+            "UPDATE available_slots SET is_booked = 0 WHERE slot_id = ?",
+            [booking.slot_id]
+        );
+
+        // 5. Devolver el token al usuario
+        await connection.execute(
+            "UPDATE tokens SET tokens_available = tokens_available + 1, tokens_used = tokens_used - 1 WHERE user_id = ?",
+            [userId]
+        );
+
+        // 6. Obtener los tokens actualizados
+        const [tokenResult] = await connection.execute(
+            "SELECT tokens_available FROM tokens WHERE user_id = ?",
+            [userId]
+        );
+
+        const tokensAvailable = tokenResult[0]?.tokens_available || 0;
+
+        // Confirmar transacción
+        await connection.commit();
+
+        res.json({
+            success: true,
+            message: "Reserva cancelada correctamente",
+            tokensReturned: 1,
+            tokensAvailable: tokensAvailable,
+        });
+    } catch (error) {
+        console.error("Error al cancelar reserva:", error);
+        await connection.rollback();
+
+        res.status(500).json({
+            success: false,
+            message: "Error al cancelar la reserva",
+            error: error.message,
+        });
+    } finally {
+        connection.release();
     }
 };
 
