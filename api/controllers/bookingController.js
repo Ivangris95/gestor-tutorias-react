@@ -1,56 +1,6 @@
 const db = require("../config/db");
 const axios = require("axios");
 
-const getServerToServerToken = async () => {
-    try {
-        console.log("Generando nuevo token OAuth para Zoom");
-
-        // Validar que las credenciales existen
-        if (!process.env.ZOOM_CLIENT_ID || !process.env.ZOOM_CLIENT_SECRET) {
-            throw new Error("Faltan credenciales de Zoom en .env");
-        }
-
-        const authString = Buffer.from(
-            `${process.env.ZOOM_CLIENT_ID}:${process.env.ZOOM_CLIENT_SECRET}`
-        ).toString("base64");
-
-        const response = await axios.post(
-            "https://zoom.us/oauth/token",
-            new URLSearchParams({
-                grant_type: "client_credentials",
-            }).toString(),
-            {
-                headers: {
-                    Authorization: `Basic ${authString}`,
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-                timeout: 5000,
-            }
-        );
-
-        if (!response.data.access_token) {
-            throw new Error("Zoom no devolvió un token válido");
-        }
-
-        console.log("Token OAuth generado con éxito");
-        return response.data.access_token;
-    } catch (error) {
-        console.error("Error al generar token OAuth:", {
-            message: error.message,
-            response: error.response?.data,
-            config: {
-                url: error.config?.url,
-                auth: error.config?.auth,
-            },
-        });
-        throw new Error(
-            `Falló la generación del token: ${
-                error.response?.data?.error || error.message
-            }`
-        );
-    }
-};
-
 exports.createBooking = async (req, res) => {
     const connection = await db.getConnection();
 
@@ -254,6 +204,123 @@ exports.getAvailableHoursForDate = async (req, res) => {
             success: false,
             message: "Error en el servidor",
         });
+    }
+};
+
+/**
+ * Cancela una reserva existente y devuelve el token al usuario
+ */
+exports.cancelBooking = async (req, res) => {
+    const connection = await db.getConnection();
+
+    try {
+        const { bookingId } = req.params;
+        const { userId } = req.body;
+
+        // Validación básica
+        if (!bookingId || !userId) {
+            return res.status(400).json({
+                success: false,
+                message: "Se requiere el ID de reserva y el ID de usuario",
+            });
+        }
+
+        // Comenzar transacción
+        await connection.beginTransaction();
+
+        // 1. Verificar que la reserva existe y pertenece al usuario
+        const [bookings] = await connection.execute(
+            `SELECT b.*, a.slot_date, a.slot_id, a.start_time
+             FROM bookings b
+             JOIN available_slots a ON b.slot_id = a.slot_id
+             WHERE b.booking_id = ? AND b.user_id = ?`,
+            [bookingId, userId]
+        );
+
+        if (bookings.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({
+                success: false,
+                message: "Reserva no encontrada o no pertenece al usuario",
+            });
+        }
+
+        const booking = bookings[0];
+
+        // 2. Verificar que la reserva no haya pasado ya
+        const bookingDate = new Date(booking.slot_date);
+        const [hours, minutes] = booking.start_time.split(":");
+        bookingDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+
+        const now = new Date();
+
+        // Verificar si falta menos de una hora para la tutoría
+        const diffMs = bookingDate - now;
+        const diffMinutes = diffMs / (1000 * 60);
+
+        if (diffMinutes < 0) {
+            await connection.rollback();
+            return res.status(400).json({
+                success: false,
+                message: "No se puede cancelar una reserva que ya ha pasado",
+            });
+        }
+
+        if (diffMinutes < 60) {
+            await connection.rollback();
+            return res.status(400).json({
+                success: false,
+                message:
+                    "No se puede cancelar una reserva cuando falta menos de 1 hora para comenzar",
+            });
+        }
+
+        // 3. Actualizar el estado de la reserva a 'cancelled'
+        await connection.execute(
+            "UPDATE bookings SET status = 'cancelled' WHERE booking_id = ?",
+            [bookingId]
+        );
+
+        // 4. Marcar el slot como disponible nuevamente
+        await connection.execute(
+            "UPDATE available_slots SET is_booked = 0 WHERE slot_id = ?",
+            [booking.slot_id]
+        );
+
+        // 5. Devolver el token al usuario
+        await connection.execute(
+            "UPDATE tokens SET tokens_available = tokens_available + 1, tokens_used = tokens_used - 1 WHERE user_id = ?",
+            [userId]
+        );
+
+        // 6. Obtener los tokens actualizados
+        const [tokenResult] = await connection.execute(
+            "SELECT tokens_available FROM tokens WHERE user_id = ?",
+            [userId]
+        );
+
+        const tokensAvailable = tokenResult[0]?.tokens_available || 0;
+
+        // Confirmar transacción
+        await connection.commit();
+
+        res.json({
+            success: true,
+            message: "Reserva cancelada correctamente",
+            tokensReturned: 1,
+            tokensAvailable: tokensAvailable,
+        });
+    } catch (error) {
+        console.error("Error al cancelar reserva:", error);
+        await connection.rollback();
+
+        res.status(500).json({
+            success: false,
+            message: "Error al cancelar la reserva",
+            error: error.message,
+        });
+    } finally {
+        connection.release();
     }
 };
 

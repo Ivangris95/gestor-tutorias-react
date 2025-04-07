@@ -18,4 +18,6 @@ router.put(
 
 router.get("/bookings/:bookingId/zoom", bookingController.generateZoomLink);
 
+router.delete("/bookings/:bookingId/cancel", bookingController.cancelBooking);
+
 module.exports = router;

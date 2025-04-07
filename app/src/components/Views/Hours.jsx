@@ -6,6 +6,8 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [bookingInProgress, setBookingInProgress] = useState(false);
+    const [currentUserId, setCurrentUserId] = useState(null);
+    const [cancelInProgress, setCancelInProgress] = useState(false);
 
     // Función para formatear la fecha como YYYY-MM-DD
     const formatDate = (date) => {
@@ -18,6 +20,14 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
 
         return `${year}-${month}-${day}`;
     };
+
+    // Obtener el ID del usuario actual del localStorage al cargar el componente
+    useEffect(() => {
+        const userData = JSON.parse(localStorage.getItem("user"));
+        if (userData && userData.id) {
+            setCurrentUserId(parseInt(userData.id));
+        }
+    }, []);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -67,25 +77,42 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                     .map((time) => ({
                         ...time,
                         is_booked: false, // Inicialmente no están reservadas
+                        booked_by_current_user: false, // Nueva propiedad
+                        booking_id: null, // Guardar el ID de la reserva para cancelación
                     }));
 
-                // 2. Obtener las reservas para esta fecha para saber cuáles están ocupadas
+                // 4. Obtener las reservas para esta fecha para saber cuáles están ocupadas
                 const bookedResponse = await fetch(
                     `http://localhost:5000/api/bookings/date/${formattedDate}`
                 );
 
                 if (bookedResponse.ok) {
                     const bookedData = await bookedResponse.json();
+                    console.log("Datos de horas reservadas:", bookedData);
+
                     if (bookedData.success) {
                         setBookedSlots(bookedData.bookedSlots || []);
 
-                        // Marcar las horas reservadas
+                        // Marcar las horas reservadas y quién las reservó
                         for (const hour of availableHours) {
-                            const isBooked = bookedData.bookedSlots.some(
+                            const bookedSlot = bookedData.bookedSlots.find(
                                 (slot) => slot.start_time === hour.start_time
                             );
-                            if (isBooked) {
+
+                            if (bookedSlot) {
                                 hour.is_booked = true;
+                                hour.booked_by = parseInt(bookedSlot.user_id);
+
+                                // IMPORTANTE: Guardamos el ID de la reserva
+                                hour.booking_id = bookedSlot.booking_id;
+
+                                // Verificar si está reservada por el usuario actual
+                                if (
+                                    parseInt(bookedSlot.user_id) ===
+                                    currentUserId
+                                ) {
+                                    hour.booked_by_current_user = true;
+                                }
                             }
                         }
                     }
@@ -103,7 +130,7 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
         };
 
         fetchData();
-    }, [selectedDate]);
+    }, [selectedDate, currentUserId]);
 
     // Función para formatear la hora (HH:MM:SS → HH:MM)
     const formatTime = (timeString) => {
@@ -124,6 +151,28 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
 
         // Comparar si la hora seleccionada es anterior a la hora actual
         return fullDateTime < now;
+    };
+
+    // Función para verificar si falta menos de una hora para la tutoría
+    const isWithinOneHourBefore = (startTimeString) => {
+        if (!selectedDate) return false;
+
+        // Crear un objeto Date completo combinando la fecha seleccionada y la hora
+        const [hours, minutes] = startTimeString.split(":");
+        const tutoringTime = new Date(selectedDate);
+        tutoringTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+
+        // Obtener la hora actual
+        const now = new Date();
+
+        // Calcular la diferencia en milisegundos
+        const diffMs = tutoringTime - now;
+
+        // Convertir a minutos
+        const diffMinutes = diffMs / (1000 * 60);
+
+        // Verificar si falta menos de 60 minutos (1 hora)
+        return diffMinutes >= 0 && diffMinutes < 60;
     };
 
     // Verificar si un horario ya está reservado
@@ -222,10 +271,30 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                 alert("Reserva realizada con éxito");
 
                 // Actualizar la lista de horarios reservados localmente
-                setBookedSlots([
-                    ...bookedSlots,
-                    { time_id: hour.time_id, start_time: hour.start_time },
-                ]);
+                const newBookedSlot = {
+                    time_id: hour.time_id,
+                    start_time: hour.start_time,
+                    user_id: userData.id, // Incluir el ID del usuario actual
+                    booking_id: data.bookingId, // Guardar el ID de la reserva
+                };
+
+                setBookedSlots([...bookedSlots, newBookedSlot]);
+
+                // Actualizar la lista de horas para mostrar la nueva reserva en verde
+                setHours((prevHours) =>
+                    prevHours.map((h) => {
+                        if (h.time_id === hour.time_id) {
+                            return {
+                                ...h,
+                                is_booked: true,
+                                booked_by: parseInt(userData.id),
+                                booked_by_current_user: true,
+                                booking_id: data.bookingId,
+                            };
+                        }
+                        return h;
+                    })
+                );
 
                 if (onHourSelect) {
                     onHourSelect(hour, true);
@@ -236,6 +305,124 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
             setError(err.message || "Error al procesar la reserva");
         } finally {
             setBookingInProgress(false);
+        }
+    };
+
+    // Función para cancelar una reserva
+    const handleCancelBooking = async (hour, event) => {
+        // Detener propagación para evitar que el clic en la X afecte al botón completo
+        event.stopPropagation();
+
+        // Depuración
+        console.log("Datos de hora a cancelar:", {
+            time_id: hour.time_id,
+            start_time: hour.start_time,
+            booking_id: hour.booking_id,
+            is_booked: hour.is_booked,
+            booked_by_current_user: hour.booked_by_current_user,
+        });
+
+        if (!hour.booking_id) {
+            console.error("No se puede cancelar: falta ID de reserva", hour);
+            setError(
+                "No se puede cancelar la reserva: información incompleta."
+            );
+            return;
+        }
+
+        // Verificar si falta menos de una hora
+        if (isWithinOneHourBefore(hour.start_time)) {
+            alert(
+                "No se puede cancelar la reserva cuando falta menos de 1 hora para comenzar."
+            );
+            return;
+        }
+
+        // Confirmar con el usuario
+        if (
+            !window.confirm(
+                "¿Estás seguro de que deseas cancelar esta reserva? Se te devolverá el token utilizado."
+            )
+        ) {
+            return;
+        }
+
+        setCancelInProgress(true);
+
+        try {
+            const userData = JSON.parse(localStorage.getItem("user"));
+
+            if (!userData || !userData.id) {
+                throw new Error("No hay información de usuario");
+            }
+
+            // Depuración
+            console.log("Enviando solicitud de cancelación:", {
+                url: `http://localhost:5000/api/bookings/${hour.booking_id}/cancel`,
+                userId: userData.id,
+                bookingId: hour.booking_id,
+            });
+
+            const response = await fetch(
+                `http://localhost:5000/api/bookings/${hour.booking_id}/cancel`,
+                {
+                    method: "DELETE",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        userId: userData.id,
+                    }),
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(
+                    errorData.message || "Error al cancelar reserva"
+                );
+            }
+
+            const data = await response.json();
+            console.log("Respuesta del servidor:", data);
+
+            if (data.success) {
+                alert(
+                    "Reserva cancelada con éxito. Se ha devuelto 1 token a tu cuenta."
+                );
+
+                // Actualizar la lista de horas reservadas localmente
+                setBookedSlots(
+                    bookedSlots.filter(
+                        (slot) => !(slot.time_id === hour.time_id)
+                    )
+                );
+
+                // Actualizar el estado de las horas para reflejar la cancelación
+                setHours((prevHours) =>
+                    prevHours.map((h) => {
+                        if (h.time_id === hour.time_id) {
+                            return {
+                                ...h,
+                                is_booked: false,
+                                booked_by: null,
+                                booked_by_current_user: false,
+                                booking_id: null,
+                            };
+                        }
+                        return h;
+                    })
+                );
+
+                if (onHourSelect) {
+                    onHourSelect(hour, true);
+                }
+            }
+        } catch (err) {
+            console.error("Error al cancelar reserva:", err);
+            setError(err.message || "Error al cancelar la reserva");
+        } finally {
+            setCancelInProgress(false);
         }
     };
 
@@ -254,30 +441,99 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
             {hours.length > 0 ? (
                 hours.map((hour) => {
                     // Verificar si esta hora ya está reservada o ha pasado
-                    const booked =
-                        hour.is_booked ||
-                        isTimeBooked(hour.time_id) ||
-                        isTimePassed(hour.start_time);
+                    const booked = hour.is_booked || isTimeBooked(hour.time_id);
+                    const isPast = isTimePassed(hour.start_time);
+                    const isWithinOneHour = isWithinOneHourBefore(
+                        hour.start_time
+                    );
 
-                    // Mostrar todos los horarios, pero deshabilitar los ya reservados o pasados
-                    return (
-                        <button
-                            key={hour.time_id}
-                            className={`btn ${
-                                booked ? "btn-secondary" : "btn-outline-primary"
-                            } w-75 m-2`}
-                            onClick={() => !booked && handleHourSelect(hour)}
-                            disabled={
-                                bookingInProgress || !selectedDate || booked
-                            }
-                        >
+                    // Determinar el estilo del botón según quién reservó
+                    let buttonClass = "btn-outline-primary";
+                    let content = (
+                        <>
                             {formatTime(hour.start_time)} -{" "}
                             {formatTime(hour.end_time)}
-                            {booked && (
-                                <i className="fa-solid fa-check ms-2"></i>
-                            )}
-                        </button>
+                        </>
                     );
+
+                    if (booked) {
+                        if (hour.booked_by_current_user) {
+                            return (
+                                <div
+                                    key={hour.time_id}
+                                    className="d-flex justify-content-between align-items-center w-75 m-2"
+                                >
+                                    <div className="btn btn-success flex-grow-1 text-start d-flex justify-content-between align-items-center">
+                                        <span>
+                                            {formatTime(hour.start_time)} -{" "}
+                                            {formatTime(hour.end_time)}
+                                            <i className="fa-solid fa-check ms-2"></i>
+                                        </span>
+
+                                        {isWithinOneHour && !isPast && (
+                                            <span className="badge bg-warning text-dark ms-auto">
+                                                Próximo
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {!isPast && !isWithinOneHour && (
+                                        <button
+                                            className="btn btn-sm btn-danger ms-1 rounded-3 fs-6"
+                                            onClick={(e) =>
+                                                handleCancelBooking(hour, e)
+                                            }
+                                            disabled={cancelInProgress}
+                                            style={{ padding: "5.5px 10.5px" }}
+                                            title="Cancelar reserva"
+                                        >
+                                            <i className="fa-solid fa-times"></i>
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        } else {
+                            buttonClass = "btn-secondary";
+                            content = (
+                                <>
+                                    {formatTime(hour.start_time)} -{" "}
+                                    {formatTime(hour.end_time)}
+                                    <i className="fa-solid fa-check ms-2"></i>
+                                </>
+                            );
+                        }
+                    } else if (isPast) {
+                        buttonClass = "btn-secondary";
+                        content = (
+                            <>
+                                {formatTime(hour.start_time)} -{" "}
+                                {formatTime(hour.end_time)}
+                            </>
+                        );
+                    }
+
+                    // Para slots no reservados o reservados por otros usuarios
+                    if (!hour.booked_by_current_user) {
+                        return (
+                            <button
+                                key={hour.time_id}
+                                className={`btn ${buttonClass} w-75 m-2`}
+                                onClick={() =>
+                                    !booked && !isPast && handleHourSelect(hour)
+                                }
+                                disabled={
+                                    bookingInProgress ||
+                                    !selectedDate ||
+                                    booked ||
+                                    isPast
+                                }
+                            >
+                                {content}
+                            </button>
+                        );
+                    }
+
+                    return null;
                 })
             ) : (
                 <p className="text-center">
