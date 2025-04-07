@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { Alert } from "@mui/material";
+import { useCustomAlert } from "../Alert/CustomAlert"; // Importar nuestro hook personalizado
 
 function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
     const [hours, setHours] = useState([]);
@@ -8,6 +10,14 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
     const [bookingInProgress, setBookingInProgress] = useState(false);
     const [currentUserId, setCurrentUserId] = useState(null);
     const [cancelInProgress, setCancelInProgress] = useState(false);
+
+    // Utilizar nuestro hook personalizado
+    const {
+        showAlert,
+        showConfirmDialog,
+        AlertComponent,
+        ConfirmDialogComponent,
+    } = useCustomAlert();
 
     // Función para formatear la fecha como YYYY-MM-DD
     const formatDate = (date) => {
@@ -76,9 +86,9 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                     .filter((time) => !disabledTimeIds.includes(time.time_id))
                     .map((time) => ({
                         ...time,
-                        is_booked: false, // Inicialmente no están reservadas
-                        booked_by_current_user: false, // Nueva propiedad
-                        booking_id: null, // Guardar el ID de la reserva para cancelación
+                        is_booked: false,
+                        booked_by_current_user: false,
+                        booking_id: null,
                     }));
 
                 // 4. Obtener las reservas para esta fecha para saber cuáles están ocupadas
@@ -121,7 +131,7 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                 setHours(availableHours);
                 setError(null);
             } catch (err) {
-                setError("Error al cargar horarios disponibles");
+                setError("Error loading available times");
                 console.error("Error fetching data:", err);
                 setHours([]);
             } finally {
@@ -196,7 +206,14 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
 
             if (!userData || !userData.id) {
                 console.error("No hay información de usuario");
-                setError("Debes iniciar sesión para reservar una tutoría");
+                setError("You must log in to book a tutoring session");
+
+                // Usar nuestro sistema de alertas
+                showAlert({
+                    message: "You must log in to book a tutoring session",
+                    severity: "error",
+                });
+
                 setBookingInProgress(false);
                 return;
             }
@@ -268,7 +285,15 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
             console.log("Respuesta de reserva:", data);
 
             if (data.success) {
-                alert("Reserva realizada con éxito");
+                // Usar nuestro sistema de alertas
+                showAlert({
+                    message: "Reservation successfully made",
+                    severity: "success",
+                    customStyles: {
+                        backgroundColor: "#4caf50",
+                        color: "white",
+                    },
+                });
 
                 // Actualizar la lista de horarios reservados localmente
                 const newBookedSlot = {
@@ -302,51 +327,58 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
             }
         } catch (err) {
             console.error("Error completo:", err);
-            setError(err.message || "Error al procesar la reserva");
+            setError(err.message || "Error processing the reservation.");
+
+            // Usar nuestro sistema de alertas
+            showAlert({
+                message: err.message || "Error processing the reservation.",
+                severity: "error",
+                duration: 5000,
+            });
         } finally {
             setBookingInProgress(false);
         }
     };
 
-    // Función para cancelar una reserva
-    const handleCancelBooking = async (hour, event) => {
+    // Abrir el diálogo de confirmación para cancelar
+    const openCancelDialog = (hour, event) => {
         // Detener propagación para evitar que el clic en la X afecte al botón completo
         event.stopPropagation();
 
-        // Depuración
-        console.log("Datos de hora a cancelar:", {
-            time_id: hour.time_id,
-            start_time: hour.start_time,
-            booking_id: hour.booking_id,
-            is_booked: hour.is_booked,
-            booked_by_current_user: hour.booked_by_current_user,
-        });
+        // Verificar si falta menos de una hora
+        if (isWithinOneHourBefore(hour.start_time)) {
+            showAlert({
+                message:
+                    "The reservation cannot be canceled less than 1 hour before it starts.",
+                severity: "warning",
+            });
+            return;
+        }
 
         if (!hour.booking_id) {
             console.error("No se puede cancelar: falta ID de reserva", hour);
-            setError(
-                "No se puede cancelar la reserva: información incompleta."
-            );
+            showAlert({
+                message:
+                    "The reservation cannot be canceled: incomplete information.",
+                severity: "error",
+            });
             return;
         }
 
-        // Verificar si falta menos de una hora
-        if (isWithinOneHourBefore(hour.start_time)) {
-            alert(
-                "No se puede cancelar la reserva cuando falta menos de 1 hora para comenzar."
-            );
-            return;
-        }
+        // Abrir diálogo de confirmación
+        showConfirmDialog({
+            title: "Are you sure you want to cancel this reservation?",
+            message:
+                "The token used to make this reservation will be returned to you.",
+            confirmButtonText: "Confirm",
+            cancelButtonText: "Cancel",
+            confirmButtonColor: "error",
+            onConfirm: () => handleCancelBooking(hour),
+        });
+    };
 
-        // Confirmar con el usuario
-        if (
-            !window.confirm(
-                "¿Estás seguro de que deseas cancelar esta reserva? Se te devolverá el token utilizado."
-            )
-        ) {
-            return;
-        }
-
+    // Función para cancelar una reserva
+    const handleCancelBooking = async (hour) => {
         setCancelInProgress(true);
 
         try {
@@ -379,7 +411,7 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(
-                    errorData.message || "Error al cancelar reserva"
+                    errorData.message || "Error canceling reservation."
                 );
             }
 
@@ -387,9 +419,11 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
             console.log("Respuesta del servidor:", data);
 
             if (data.success) {
-                alert(
-                    "Reserva cancelada con éxito. Se ha devuelto 1 token a tu cuenta."
-                );
+                showAlert({
+                    message:
+                        "Reservation successfully canceled. 1 token has been returned to your account.",
+                    severity: "success",
+                });
 
                 // Actualizar la lista de horas reservadas localmente
                 setBookedSlots(
@@ -420,7 +454,12 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
             }
         } catch (err) {
             console.error("Error al cancelar reserva:", err);
-            setError(err.message || "Error al cancelar la reserva");
+            setError(err.message || "Error canceling reservation.");
+
+            showAlert({
+                message: err.message || "Error canceling reservation.",
+                severity: "error",
+            });
         } finally {
             setCancelInProgress(false);
         }
@@ -433,7 +472,11 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
     }
 
     if (error) {
-        return <div className="alert alert-danger m-2">{error}</div>;
+        return (
+            <Alert severity="error" className="m-2">
+                {error}
+            </Alert>
+        );
     }
 
     return (
@@ -481,7 +524,7 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                                         <button
                                             className="btn btn-sm btn-danger ms-1 rounded-3 fs-6"
                                             onClick={(e) =>
-                                                handleCancelBooking(hour, e)
+                                                openCancelDialog(hour, e)
                                             }
                                             disabled={cancelInProgress}
                                             style={{ padding: "5.5px 10.5px" }}
@@ -540,6 +583,10 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                     There are no available times for this date.
                 </p>
             )}
+
+            {/* Incluir los componentes de alerta y diálogo */}
+            <AlertComponent />
+            <ConfirmDialogComponent />
         </div>
     );
 }

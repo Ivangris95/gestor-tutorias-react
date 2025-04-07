@@ -10,10 +10,13 @@
         "preview": "vite preview"
     },
     "dependencies": {
+        "@emotion/react": "^11.14.0",
+        "@emotion/styled": "^11.14.0",
         "@fullcalendar/core": "^6.1.15",
         "@fullcalendar/daygrid": "^6.1.15",
         "@fullcalendar/interaction": "^6.1.15",
         "@fullcalendar/react": "^6.1.15",
+        "@mui/material": "^7.0.1",
         "@paypal/react-paypal-js": "^8.8.2",
         "@stripe/react-stripe-js": "^3.3.0",
         "@stripe/stripe-js": "^5.8.0",

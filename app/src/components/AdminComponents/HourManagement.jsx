@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
+import { Alert } from "@mui/material";
 import {
     getPredefinedTimes,
     getDisabledHoursForDate,
     disableHour,
     enableHour,
 } from "../../services/adminService";
+import { useCustomAlert } from "../Alert/CustomAlert";
 
 function HourManagement() {
     const [predefinedTimes, setPredefinedTimes] = useState([]);
@@ -14,6 +16,10 @@ function HourManagement() {
     const [error, setError] = useState(null);
     const [saving, setSaving] = useState(false);
 
+    // Usar nuestro hook personalizado para alertas
+    const { showAlert, AlertComponent, ConfirmDialogComponent } =
+        useCustomAlert();
+
     // Cargar todas las horas predefinidas
     const loadPredefinedTimes = async () => {
         try {
@@ -22,9 +28,17 @@ function HourManagement() {
                 setPredefinedTimes(data.times);
             } else {
                 setError("Error al cargar horarios predefinidos");
+                showAlert({
+                    message: "Error al cargar horarios predefinidos",
+                    severity: "error",
+                });
             }
         } catch (err) {
             setError("Error al cargar horarios predefinidos");
+            showAlert({
+                message: "Error al cargar horarios predefinidos",
+                severity: "error",
+            });
             console.error(err);
         }
     };
@@ -53,6 +67,10 @@ function HourManagement() {
         } catch (err) {
             console.error("Error al cargar horas deshabilitadas:", err);
             setError(err.message || "Error al cargar horas deshabilitadas");
+            showAlert({
+                message: err.message || "Error al cargar horas deshabilitadas",
+                severity: "error",
+            });
             // Si hay un error, asumimos que no hay horas deshabilitadas
             setDisabledHours([]);
         } finally {
@@ -82,6 +100,7 @@ function HourManagement() {
             setDisabledHours([]);
         }
     }, [selectedDate, predefinedTimes]);
+
     // Manejar cambio de fecha
     const handleDateChange = (e) => {
         setSelectedDate(e.target.value);
@@ -95,7 +114,11 @@ function HourManagement() {
     // Alternar estado habilitado/deshabilitado de una hora
     const toggleHourEnabled = async (timeId) => {
         if (!selectedDate) {
-            alert("Por favor, selecciona una fecha primero");
+            // Reemplazamos alert nativo con nuestro sistema de alertas
+            showAlert({
+                message: "Please select a date first",
+                severity: "warning",
+            });
             return;
         }
 
@@ -108,17 +131,31 @@ function HourManagement() {
             const user = JSON.parse(userString);
 
             if (isDisabled) {
-                // Si está deshabilitada, la habilitamos
+                // If it's disabled, we enable it
                 await enableHour(selectedDate, timeId);
                 setDisabledHours(disabledHours.filter((id) => id !== timeId));
+                showAlert({
+                    message: "Hour enabled successfully",
+                    severity: "success",
+                    duration: 3000,
+                });
             } else {
-                // Si está habilitada, la deshabilitamos
+                // If it's enabled, we disable it
                 await disableHour(selectedDate, timeId, user.id);
                 setDisabledHours([...disabledHours, timeId]);
+                showAlert({
+                    message: "Hour disabled successfully",
+                    severity: "info",
+                    duration: 3000,
+                });
             }
         } catch (err) {
-            console.error("Error al cambiar estado de hora:", err);
-            setError(err.message || "Error al actualizar disponibilidad");
+            console.error("Error changing hour state:", err);
+            setError(err.message || "Error updating availability");
+            showAlert({
+                message: err.message || "Error updating availability",
+                severity: "error",
+            });
         } finally {
             setSaving(false);
         }
@@ -129,19 +166,17 @@ function HourManagement() {
         <div className="card m-5 m-md-0">
             <div className="card-body m-5">
                 <h5 className="card-title">
-                    Hours Management for {selectedDate}
+                    Schedule Management for {selectedDate}
                 </h5>
 
                 {error && (
-                    <div className="alert alert-danger" role="alert">
+                    <Alert
+                        severity="error"
+                        sx={{ mb: 2 }}
+                        onClose={() => setError(null)}
+                    >
                         {error}
-                        <button
-                            type="button"
-                            className="btn-close float-end"
-                            onClick={() => setError(null)}
-                            aria-label="Close"
-                        ></button>
-                    </div>
+                    </Alert>
                 )}
 
                 <div className="mb-3">
@@ -159,12 +194,12 @@ function HourManagement() {
 
                 <div className="mb-3">
                     <p>
-                        All hours are enabled by default. Click to disable the
+                        All times are enabled by default. Click to disable the
                         ones you don't want to offer:
                     </p>
 
                     {loading ? (
-                        <p>Select a date to load schedules...</p>
+                        <p>Select a date to load the times...</p>
                     ) : (
                         <div className="d-flex flex-wrap gap-2">
                             {predefinedTimes.map((time) => (
@@ -188,10 +223,14 @@ function HourManagement() {
                     )}
                 </div>
 
-                <div className="alert alert-info">
-                    <strong>Note:</strong> The hours in blue are enabled for
-                    this date. Click to disable/enable.
-                </div>
+                <Alert severity="info" sx={{ mt: 3 }}>
+                    <strong>Note:</strong> The blue times are available for this
+                    date. Click to enable/disable.
+                </Alert>
+
+                {/* Componentes de alerta y diálogo */}
+                <AlertComponent />
+                <ConfirmDialogComponent />
             </div>
         </div>
     );

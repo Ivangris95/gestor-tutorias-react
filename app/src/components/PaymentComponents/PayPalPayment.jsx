@@ -1,8 +1,13 @@
 import React, { useEffect, useState, useRef } from "react";
+import { useCustomAlert } from "../Alert/CustomAlert";
 
 const PayPalPayment = ({ amount, description, onPaymentSuccess }) => {
     const paypalButtonsRef = useRef(null);
     const [isSdkLoaded, setIsSdkLoaded] = useState(false);
+
+    // Usar nuestro hook personalizado para alertas
+    const { showAlert, AlertComponent, ConfirmDialogComponent } =
+        useCustomAlert();
 
     // Función para renderizar los botones de PayPal
     const renderPayPalButtons = () => {
@@ -42,6 +47,13 @@ const PayPalPayment = ({ amount, description, onPaymentSuccess }) => {
 
                 // Finalizar la transacción
                 onApprove: (data, actions) => {
+                    // Mostrar mensaje de procesamiento
+                    showAlert({
+                        message: "Processing your payment, please wait...",
+                        severity: "info",
+                        duration: 5000,
+                    });
+
                     return actions.order.capture().then(function (orderData) {
                         onPaymentSuccess({
                             id: orderData.id,
@@ -53,14 +65,24 @@ const PayPalPayment = ({ amount, description, onPaymentSuccess }) => {
                 // Manejar errores
                 onError: (err) => {
                     console.error("Error en el proceso de pago:", err);
-                    alert(
-                        "Hubo un problema con tu pago. Por favor intenta de nuevo."
-                    );
+
+                    showAlert({
+                        message:
+                            "There was an issue with your payment. Please try again.",
+                        severity: "error",
+                        duration: 5000,
+                    });
                 },
             })
             .render(buttonContainer)
             .catch((err) => {
                 console.error("Error al renderizar botones de PayPal:", err);
+
+                showAlert({
+                    message:
+                        "The PayPal buttons could not be loaded. Please refresh the page or try again later.",
+                    severity: "error",
+                });
             });
     };
 
@@ -81,14 +103,10 @@ const PayPalPayment = ({ amount, description, onPaymentSuccess }) => {
             console.warn("Error al acceder a variables de entorno:", error);
         }
 
-        // Si no se encuentra la variable de entorno, usa un valor de respaldo
         if (!PAYPAL_CLIENT_ID) {
             console.warn(
                 "Variable de entorno VITE_PAYPAL_CLIENT_ID no encontrada. Usando Client ID de respaldo."
             );
-            // Este es un ejemplo. Para producción, asegúrate de configurar tu variable de entorno.
-            PAYPAL_CLIENT_ID =
-                "AcbDwBUL1SvY3xTxoC6poI66JAaZ0LbsaD-C7kKFvPLFmiyH_IZ943GU_4zzBLiLF7_fqeVfIRaFP0hf";
         }
 
         const script = document.createElement("script");
@@ -97,6 +115,14 @@ const PayPalPayment = ({ amount, description, onPaymentSuccess }) => {
         script.onload = () => {
             console.log("PayPal SDK cargado correctamente");
             setIsSdkLoaded(true);
+        };
+        script.onerror = () => {
+            console.error("Error al cargar PayPal SDK");
+            showAlert({
+                message:
+                    "PayPal could not be loaded. Check your internet connection or try again later.",
+                severity: "error",
+            });
         };
 
         document.body.appendChild(script);
@@ -129,6 +155,10 @@ const PayPalPayment = ({ amount, description, onPaymentSuccess }) => {
             ) : (
                 <div ref={paypalButtonsRef} className="w-100"></div>
             )}
+
+            {/* Componentes de alerta y diálogo */}
+            <AlertComponent />
+            <ConfirmDialogComponent />
         </div>
     );
 };

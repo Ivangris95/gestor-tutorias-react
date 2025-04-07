@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useCustomAlert } from "../Alert/CustomAlert";
 
 function NotificationsPanel() {
     const [isOpen, setIsOpen] = useState(false);
@@ -7,6 +8,10 @@ function NotificationsPanel() {
     const [error, setError] = useState(null);
     const [isAnimating, setIsAnimating] = useState(false);
     const panelRef = useRef();
+
+    // Usar nuestro hook personalizado para alertas
+    const { showAlert, AlertComponent, ConfirmDialogComponent } =
+        useCustomAlert();
 
     // Verificar si una tutoría ya ha finalizado
     const hasTutorialEnded = (booking) => {
@@ -30,7 +35,7 @@ function NotificationsPanel() {
             const userData = JSON.parse(localStorage.getItem("user"));
 
             if (!userData || !userData.id) {
-                throw new Error("No se encontró información del usuario");
+                throw new Error("User information not found");
             }
 
             const response = await fetch(
@@ -38,7 +43,7 @@ function NotificationsPanel() {
             );
 
             if (!response.ok) {
-                throw new Error("Error al cargar tutorías pendientes");
+                throw new Error("Error loading pending tutorials");
             }
 
             const data = await response.json();
@@ -55,11 +60,11 @@ function NotificationsPanel() {
                     triggerAnimation();
                 }
             } else {
-                throw new Error(data.message || "Error al cargar tutorías");
+                throw new Error(data.message || "Error loading tutorials");
             }
         } catch (err) {
-            console.error("Error al cargar tutorías pendientes:", err);
-            setError(err.message || "Error al cargar tutorías pendientes");
+            console.error("Error loading pending tutorials:", err);
+            setError(err.message || "Error loading pending tutorials");
         } finally {
             setLoading(false);
         }
@@ -97,8 +102,12 @@ function NotificationsPanel() {
             return;
         }
 
-        // Si no hay datos suficientes, mostrar un mensaje
-        alert("The Zoom link for this tutorial is not available yet.");
+        // Si no hay datos suficientes, mostrar un mensaje con nuestra alerta personalizada
+        showAlert({
+            message: "The Zoom link for this tutorial is not available yet.",
+            severity: "warning",
+            duration: 5000,
+        });
     };
 
     // Cargar tutorías al montar el componente
@@ -183,6 +192,16 @@ function NotificationsPanel() {
 
         // Está próxima a comenzar si faltan 30 minutos o menos y aún no ha pasado
         return diffMinutes <= 30 && diffMinutes >= -60; // Consideramos "próxima" hasta 1 hora después del inicio
+    };
+
+    // Función para mostrar mensaje después de actualizar
+    const handleRefresh = () => {
+        fetchPendingTutorials();
+        showAlert({
+            message: "Tutorial list updated successfully",
+            severity: "success",
+            duration: 5000,
+        });
     };
 
     return (
@@ -365,7 +384,7 @@ function NotificationsPanel() {
                         <div className="card-footer text-center">
                             <button
                                 className="btn btn-sm btn-outline-primary"
-                                onClick={fetchPendingTutorials}
+                                onClick={handleRefresh}
                             >
                                 <i className="fas fa-sync-alt me-1"></i> Update
                             </button>
@@ -373,6 +392,10 @@ function NotificationsPanel() {
                     )}
                 </div>
             )}
+
+            {/* Componentes de alerta y diálogo */}
+            <AlertComponent />
+            <ConfirmDialogComponent />
         </div>
     );
 }

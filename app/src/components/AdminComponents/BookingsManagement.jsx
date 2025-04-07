@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
+import { Alert } from "@mui/material";
 import {
     getBookings,
     updateBookingStatus,
     getBookingDetails,
 } from "../../services/adminService";
+import { useCustomAlert } from "../Alert/CustomAlert"; // Importamos nuestro hook personalizado
 
 function BookingsManagement() {
     const [bookings, setBookings] = useState([]);
@@ -13,6 +15,14 @@ function BookingsManagement() {
     const [bookingDetails, setBookingDetails] = useState(null);
     const [showDetailsModal, setShowDetailsModal] = useState(false);
 
+    // Usar nuestro hook personalizado para alertas
+    const {
+        showAlert,
+        showConfirmDialog,
+        AlertComponent,
+        ConfirmDialogComponent,
+    } = useCustomAlert();
+
     // Obtener todas las reservas
     const fetchBookings = async () => {
         try {
@@ -21,7 +31,11 @@ function BookingsManagement() {
             setBookings(data);
             setError(null);
         } catch (err) {
-            setError("Error al cargar reservas");
+            setError("Error loading reservations");
+            showAlert({
+                message: "Error loading the reservations",
+                severity: "error",
+            });
             console.error(err);
         } finally {
             setLoading(false);
@@ -40,35 +54,46 @@ function BookingsManagement() {
 
     // Manejar cambio de estado de reserva
     const handleStatusChange = async (bookingId, newStatus) => {
-        if (
-            !window.confirm(
-                `¿Estás seguro de cambiar el estado a "${newStatus}"?`
-            )
-        ) {
-            return;
-        }
+        // En lugar de window.confirm, usamos nuestro diálogo personalizado
+        showConfirmDialog({
+            title: "Confirm state change",
+            message: `Are you sure you want to change the state to "${
+                newStatus === "completed" ? "Completed" : "Canceled"
+            }?"`,
+            confirmButtonText: "Yes, change",
+            cancelButtonText: "Cancel",
+            confirmButtonColor: newStatus === "completed" ? "success" : "error",
+            onConfirm: async () => {
+                try {
+                    setLoading(true);
+                    await updateBookingStatus(bookingId, newStatus);
 
-        try {
-            setLoading(true);
-            await updateBookingStatus(bookingId, newStatus);
+                    // Actualizar la lista de reservas
+                    setBookings(
+                        bookings.map((booking) =>
+                            booking.booking_id === bookingId
+                                ? { ...booking, status: newStatus }
+                                : booking
+                        )
+                    );
 
-            // Actualizar la lista de reservas
-            setBookings(
-                bookings.map((booking) =>
-                    booking.booking_id === bookingId
-                        ? { ...booking, status: newStatus }
-                        : booking
-                )
-            );
-
-            // Mostrar mensaje de éxito
-            alert("Estado actualizado correctamente");
-        } catch (err) {
-            setError("Error al actualizar estado");
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
+                    // Mostrar mensaje de éxito con nuestra alerta personalizada
+                    showAlert({
+                        message: "State updated successfully",
+                        severity: "success",
+                    });
+                } catch (err) {
+                    setError("Error updating state");
+                    showAlert({
+                        message: "Error updating reservation state",
+                        severity: "error",
+                    });
+                    console.error(err);
+                } finally {
+                    setLoading(false);
+                }
+            },
+        });
     };
 
     // Mostrar detalles de una reserva
@@ -80,6 +105,10 @@ function BookingsManagement() {
             setShowDetailsModal(true);
         } catch (err) {
             setError("Error al obtener detalles de la reserva");
+            showAlert({
+                message: "Error al obtener los detalles de la reserva",
+                severity: "error",
+            });
             console.error(err);
         } finally {
             setLoading(false);
@@ -98,9 +127,9 @@ function BookingsManagement() {
                 <h5 className="card-title">Tutorías Asignadas</h5>
 
                 {error && (
-                    <div className="alert alert-danger" role="alert">
+                    <Alert severity="error" sx={{ mb: 2 }}>
                         {error}
-                    </div>
+                    </Alert>
                 )}
 
                 <div className="mb-3">
@@ -385,6 +414,10 @@ function BookingsManagement() {
                         </div>
                     </div>
                 )}
+
+                {/* Componentes de alertas y diálogos */}
+                <AlertComponent />
+                <ConfirmDialogComponent />
             </div>
         </div>
     );
