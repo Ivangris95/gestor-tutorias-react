@@ -1,5 +1,5 @@
 import "animate.css";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, use } from "react";
 import Calendar from "./Views/Calendar";
 import PaymentGateway from "./PaymentComponents/PaymentGateway";
 import AdminPanel from "./AdminComponents/AdminPanel";
@@ -52,7 +52,7 @@ function Home({ onLogout }) {
     const handleTogglePaymentGateway = (value) => {
         setShowPaymentGateway(value);
         if (!value) {
-            setNeedTokens(false); // Reiniciar el estado de necesidad de tokens
+            setNeedTokens(false);
         }
     };
 
@@ -124,9 +124,25 @@ function Home({ onLogout }) {
             </div>
 
             <div>
-                <h2 className="my-5 text-center text-primary">
-                    Welcome back, <span className="text-dark">{username}</span>
-                </h2>
+                {!showPaymentGateway && (
+                    <>
+                        <h2 className="my-4 text-center text-primary">
+                            Welcome back,{" "}
+                            <span className="text-dark">{username}</span>
+                        </h2>
+                        <a
+                            href="#"
+                            className="my-4 text-center text-primary fs-4"
+                            style={{ textDecoration: "none" }}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                handleTogglePaymentGateway(true);
+                            }}
+                        >
+                            <p className="flashing">Buy your tokens here!</p>
+                        </a>
+                    </>
+                )}
 
                 {needTokens && showPaymentGateway && (
                     <div

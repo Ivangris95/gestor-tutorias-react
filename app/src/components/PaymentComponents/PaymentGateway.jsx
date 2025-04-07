@@ -85,7 +85,7 @@ const PaymentGateway = ({ onPurchaseComplete }) => {
 
     return (
         <div className="container py-4">
-            <h2 className="text-center mb-4">Comprar Tokens</h2>
+            <h2 className="text-center m-5">Buy Tokens</h2>
 
             <TokenOptions
                 options={[
@@ -101,7 +101,7 @@ const PaymentGateway = ({ onPurchaseComplete }) => {
 
             <div className="card mb-4">
                 <div className="card-header">
-                    <h3 className="mb-0">Elige tu método de pago</h3>
+                    <h3 className="mb-0">Choose your payment method</h3>
                 </div>
                 <div className="card-body">
                     <div className="row">
@@ -121,8 +121,8 @@ const PaymentGateway = ({ onPurchaseComplete }) => {
                         </div>
                         <div className="col-md-6">
                             <h4 className="text-center mb-3">
-                                <i className="fab fa-cc-stripe me-2"></i>Tarjeta
-                                de Crédito
+                                <i className="fab fa-cc-stripe me-2"></i>Credit
+                                Card
                             </h4>
                             <StripePayment
                                 amount={selectedOption.price}

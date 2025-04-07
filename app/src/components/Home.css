@@ -1,0 +1,15 @@
+.flashing {
+    animation: infinite flashingAnimation 2s;
+}
+
+@keyframes flashingAnimation {
+    0% {
+        color: #0d6efd;
+    }
+    50% {
+        color: #75dddd;
+    }
+    100% {
+        color: #037971;
+    }
+}

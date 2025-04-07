@@ -117,13 +117,13 @@ const PayPalPayment = ({ amount, description, onPaymentSuccess }) => {
     return (
         <div className="d-flex flex-column align-items-center justify-content-center py-3">
             <p className="text-center mb-4">
-                Paga de manera rápida y segura con PayPal
+                Pay quickly and safely with PayPal
             </p>
 
             {!isSdkLoaded ? (
                 <div className="d-flex justify-content-center mb-4">
                     <div className="spinner-border text-primary" role="status">
-                        <span className="visually-hidden">Cargando...</span>
+                        <span className="visually-hidden">Loading...</span>
                     </div>
                 </div>
             ) : (
