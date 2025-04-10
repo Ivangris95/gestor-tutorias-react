@@ -124,7 +124,7 @@ function BookingsManagement() {
     return (
         <div className="card">
             <div className="card-body">
-                <h5 className="card-title">Tutorías Asignadas</h5>
+                <h5 className="card-title">Assigned Tutorials.</h5>
 
                 {error && (
                     <Alert severity="error" sx={{ mb: 2 }}>
@@ -134,7 +134,7 @@ function BookingsManagement() {
 
                 <div className="mb-3">
                     <label htmlFor="filterDate" className="form-label">
-                        Filtrar por fecha
+                        Filter by date.
                     </label>
                     <input
                         type="date"
@@ -145,20 +145,20 @@ function BookingsManagement() {
                     />
                 </div>
 
-                {loading && <p>Cargando reservas...</p>}
+                {loading && <p>Loading reservations....</p>}
 
                 {!loading && bookings.length === 0 ? (
-                    <p>No hay reservas para mostrar.</p>
+                    <p>There are no reservations to show.</p>
                 ) : (
                     <div className="table-responsive">
                         <table className="table table-striped">
                             <thead>
                                 <tr>
-                                    <th>Fecha</th>
-                                    <th>Hora</th>
-                                    <th>Estudiante</th>
-                                    <th>Estado</th>
-                                    <th>Acciones</th>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th>Student</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -187,11 +187,11 @@ function BookingsManagement() {
                                                 }`}
                                             >
                                                 {booking.status === "upcoming"
-                                                    ? "Pendiente"
+                                                    ? "Upcoming"
                                                     : booking.status ===
                                                       "completed"
-                                                    ? "Completada"
-                                                    : "Cancelada"}
+                                                    ? "Completed"
+                                                    : "Cancelled"}
                                             </span>
                                         </td>
                                         <td>
@@ -204,7 +204,7 @@ function BookingsManagement() {
                                                         )
                                                     }
                                                 >
-                                                    Detalles
+                                                    Details
                                                 </button>
 
                                                 {booking.status ===
@@ -219,7 +219,7 @@ function BookingsManagement() {
                                                                 )
                                                             }
                                                         >
-                                                            Completar
+                                                            Complete
                                                         </button>
                                                         <button
                                                             className="btn btn-sm btn-danger"
@@ -230,7 +230,7 @@ function BookingsManagement() {
                                                                 )
                                                             }
                                                         >
-                                                            Cancelar
+                                                            Cancel
                                                         </button>
                                                     </>
                                                 )}

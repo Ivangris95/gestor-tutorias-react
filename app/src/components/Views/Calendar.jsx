@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -8,6 +8,55 @@ import "./calendar.css";
 function Calendar({ onNeedTokens, onBookingComplete }) {
     const [selectedDate, setSelectedDate] = useState("");
     const [selectedDateObj, setSelectedDateObj] = useState(null);
+
+    const calendarRef = useRef(null);
+    const [selectedDateCalendar, setSelectedDateCalendar] = useState(
+        new Date()
+    );
+
+    // Generar array de años para el selector de años (5 años atrás, 5 años adelante)
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
+
+    // Generar array de meses para el selector de meses
+    const months = [
+        { value: 0, label: "January" },
+        { value: 1, label: "February" },
+        { value: 2, label: "March" },
+        { value: 3, label: "April" },
+        { value: 4, label: "May" },
+        { value: 5, label: "June" },
+        { value: 6, label: "July" },
+        { value: 7, label: "August" },
+        { value: 8, label: "September" },
+        { value: 9, label: "October" },
+        { value: 10, label: "November" },
+        { value: 11, label: "December" },
+    ];
+
+    const handleDateChange = (date) => {
+        setSelectedDateCalendar(date);
+        if (calendarRef.current) {
+            const calendarApi = calendarRef.current.getApi();
+            calendarApi.gotoDate(date);
+        }
+    };
+
+    // Manejar el cambio de año desde el dropdown
+    const handleYearChange = (e) => {
+        const year = parseInt(e.target.value);
+        const newDate = new Date(selectedDateCalendar);
+        newDate.setFullYear(year);
+        handleDateChange(newDate);
+    };
+
+    // Manejar el cambio de mes desde el dropdown
+    const handleMonthChange = (e) => {
+        const month = parseInt(e.target.value);
+        const newDate = new Date(selectedDateCalendar);
+        newDate.setMonth(month);
+        handleDateChange(newDate);
+    };
 
     const handleClick = (dateClickInfo) => {
         const date = new Date(dateClickInfo.date);
@@ -25,7 +74,7 @@ function Calendar({ onNeedTokens, onBookingComplete }) {
             month: "long",
             day: "numeric",
         };
-        const formattedDate = date.toLocaleDateString("en-US", options);
+        const formattedDate = date.toLocaleDateString("es-ES", options);
         setSelectedDate(formattedDate);
         setSelectedDateObj(date);
     };
@@ -52,14 +101,60 @@ function Calendar({ onNeedTokens, onBookingComplete }) {
                                 className="calendar-container shadow-lg p-2 rounded-2"
                                 style={{ height: "70vh" }}
                             >
+                                <div className="mb-3 d-flex align-items-center gap-2">
+                                    {/* Selector de Mes */}
+                                    <div className="flex-grow-1">
+                                        <select
+                                            className="form-select"
+                                            style={{ cursor: "pointer" }}
+                                            value={selectedDateCalendar.getMonth()}
+                                            onChange={handleMonthChange}
+                                            aria-label="Seleccionar mes"
+                                        >
+                                            {months.map((month) => (
+                                                <option
+                                                    key={month.value}
+                                                    value={month.value}
+                                                >
+                                                    {month.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Selector de Año */}
+                                    <div className="flex-grow-1">
+                                        <select
+                                            className="form-select"
+                                            style={{ cursor: "pointer" }}
+                                            value={selectedDateCalendar.getFullYear()}
+                                            onChange={handleYearChange}
+                                            aria-label="Seleccionar año"
+                                        >
+                                            {years.map((year) => (
+                                                <option key={year} value={year}>
+                                                    {year}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
                                 <FullCalendar
+                                    ref={calendarRef}
                                     plugins={[dayGridPlugin, interactionPlugin]}
                                     initialView="dayGridMonth"
-                                    height="100%"
+                                    height="90%"
                                     aspectRatio={1.5}
                                     expandRows={true}
                                     handleWindowResize={true}
                                     dateClick={handleClick}
+                                    headerToolbar={{
+                                        left: "prev,next",
+                                        center: "title",
+                                        right: "today",
+                                    }}
+                                    locale="en"
                                 />
                             </div>
                         </div>
@@ -74,7 +169,7 @@ function Calendar({ onNeedTokens, onBookingComplete }) {
                                     </p>
                                 ) : (
                                     <p className="text-primary fs-4 fw-bold text-center mt-4">
-                                        Select a date
+                                        Selecciona una fecha
                                     </p>
                                 )}
                                 <Hours
