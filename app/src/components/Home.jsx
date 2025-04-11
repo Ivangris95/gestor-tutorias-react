@@ -14,6 +14,7 @@ function Home({ onLogout }) {
     const [loading, setLoading] = useState(true);
     const [needTokens, setNeedTokens] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
+    const [userId, setUserId] = useState(null); // Añadimos un state para el ID del usuario
     const navbarRef = useRef();
 
     // Función para obtener los tokens del usuario
@@ -36,6 +37,9 @@ function Home({ onLogout }) {
         if (userString) {
             const user = JSON.parse(userString);
             setUsername(user.username);
+
+            // Guardar el ID del usuario para pasarlo al Calendar
+            setUserId(user.id);
 
             // Verificar si el usuario es administrador
             console.log("Objeto usuario:", user);
@@ -166,6 +170,7 @@ function Home({ onLogout }) {
                     <AdminPanel />
                 ) : (
                     <Calendar
+                        userId={userId}
                         onNeedTokens={handleNeedTokens}
                         onBookingComplete={handleBookingComplete}
                     />
