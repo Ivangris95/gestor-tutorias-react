@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -10,6 +10,7 @@ function Calendar({ userId, onNeedTokens, onBookingComplete }) {
     const [selectedDateObj, setSelectedDateObj] = useState(null);
     const [monthAvailability, setMonthAvailability] = useState({});
     const [loadingAvailability, setLoadingAvailability] = useState(false);
+    const [loadedMonths, setLoadedMonths] = useState({}); // Nuevo estado para seguir los meses cargados
     const [userBookings, setUserBookings] = useState([]);
 
     const calendarRef = useRef(null);
@@ -109,9 +110,8 @@ function Calendar({ userId, onNeedTokens, onBookingComplete }) {
             }
         };
 
-        // Cargar las reservas del usuario cuando el componente se monta o cambia el userId
         fetchUserBookings();
-    }, [userId]); // Añadir userId como dependencia
+    }, [userId]);
 
     const handleDateChange = (date) => {
         setSelectedDateCalendar(date);
@@ -129,25 +129,25 @@ function Calendar({ userId, onNeedTokens, onBookingComplete }) {
         handleDateChange(newDate);
     };
 
-    // Cargar datos de disponibilidad y reservas del usuario
-    useEffect(() => {
-        const fetchAvailabilityData = async () => {
+    // Función para cargar la disponibilidad de un mes específico
+    const fetchMonthAvailability = useCallback(
+        async (year, month) => {
+            const monthKey = `${year}-${month}`;
             setLoadingAvailability(true);
 
             try {
-                const currentMonth = selectedDateCalendar.getMonth();
-                const currentYear = selectedDateCalendar.getFullYear();
+                console.log(
+                    `Cargando disponibilidad para el mes: ${month + 1}/${year}`
+                );
 
                 // Obtener el primer y último día del mes
-                const firstDay = new Date(currentYear, currentMonth, 1);
-                const lastDay = new Date(currentYear, currentMonth + 1, 0);
+                const firstDay = new Date(year, month, 1);
+                const lastDay = new Date(year, month + 1, 0);
 
                 const firstDayStr = formatDate(firstDay);
                 const lastDayStr = formatDate(lastDay);
 
-                console.log(
-                    `Cargando disponibilidad para el período: ${firstDayStr} a ${lastDayStr}`
-                );
+                console.log(`Período: ${firstDayStr} a ${lastDayStr}`);
 
                 // 1. Obtener TODAS las horas predefinidas disponibles en el sistema
                 const predefinedTimesResponse = await fetch(
@@ -165,36 +165,32 @@ function Calendar({ userId, onNeedTokens, onBookingComplete }) {
                     throw new Error("Error al obtener horarios predefinidos");
                 }
 
-                // El número máximo posible de reservas por día sería el número de horarios predefinidos
+                // El número máximo posible de reservas por día
                 const maxBookingsPerDay = predefinedTimesData.times.length;
 
                 console.log(
                     `Número máximo de horarios por día: ${maxBookingsPerDay}`
                 );
 
-                // NO cargaremos las reservas del usuario aquí, ya tenemos un useEffect dedicado para eso
-                // y así evitamos que se sobrescriba cada vez que cambiamos de mes
-
-                // 3. Procesar cada día del mes para obtener su disponibilidad
                 // Crear un objeto para almacenar disponibilidad por día
-                const availabilityData = {};
+                const newAvailabilityData = {};
 
                 // Para cada día del mes
                 const daysInMonth = lastDay.getDate();
 
                 for (let day = 1; day <= daysInMonth; day++) {
-                    const date = new Date(currentYear, currentMonth, day);
+                    const date = new Date(year, month, day);
                     const dateStr = formatDate(date);
 
-                    // Si es un día pasado, marcar como no disponible
+                    // Si es un día pasado
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
 
                     try {
-                        // Registrar si es un día pasado (solo para fines de selección)
+                        // Registrar si es un día pasado
                         const isPastDay = date < today;
 
-                        // 4. Obtener horas deshabilitadas para este día específico
+                        // Obtener horas deshabilitadas para este día específico
                         const disabledHoursResponse = await fetch(
                             `http://localhost:5000/api/disabled-hours/${dateStr}`
                         );
@@ -209,7 +205,7 @@ function Calendar({ userId, onNeedTokens, onBookingComplete }) {
                             }
                         }
 
-                        // 5. Obtener horas reservadas para este día específico
+                        // Obtener horas reservadas para este día específico
                         const bookedResponse = await fetch(
                             `http://localhost:5000/api/bookings/date/${dateStr}`
                         );
@@ -222,46 +218,39 @@ function Calendar({ userId, onNeedTokens, onBookingComplete }) {
                             }
                         }
 
-                        // 6. Calcular las estadísticas de disponibilidad
-                        // Número total de slots posibles = horarios predefinidos - horas deshabilitadas
+                        // Calcular las estadísticas de disponibilidad
                         const totalPossibleSlots =
                             maxBookingsPerDay - disabledTimeIds.length;
-
-                        // Número de slots reservados
                         const bookedSlotsCount = bookedSlots.length;
-
-                        // Slots disponibles = total posibles - reservados
                         const availableSlotsCount =
                             totalPossibleSlots - bookedSlotsCount;
-
-                        // Porcentaje de disponibilidad (si hay slots posibles)
                         const availabilityPercentage =
                             totalPossibleSlots > 0
                                 ? (availableSlotsCount / totalPossibleSlots) *
                                   100
                                 : 0;
 
-                        // Verificar explícitamente si el usuario tiene una reserva para este día
+                        // Verificar si el usuario tiene una reserva para este día
                         const hasUserBooking = userBookings.includes(dateStr);
 
                         console.log(
                             `Día ${dateStr}: Total posible: ${totalPossibleSlots}, Reservados: ${bookedSlotsCount}, Disponibles: ${availableSlotsCount}, Reserva del usuario: ${hasUserBooking}`
                         );
 
-                        availabilityData[dateStr] = {
+                        newAvailabilityData[dateStr] = {
                             totalSlots: totalPossibleSlots,
                             bookedSlots: bookedSlotsCount,
                             availableSlots: availableSlotsCount,
                             availability: availabilityPercentage,
-                            isPast: isPastDay, // Guardamos esta información solo para impedir selección
-                            hasUserBooking: hasUserBooking, // Usamos la verificación explícita
+                            isPast: isPastDay,
+                            hasUserBooking: hasUserBooking,
                         };
                     } catch (error) {
                         console.error(
                             `Error al obtener datos para ${dateStr}:`,
                             error
                         );
-                        availabilityData[dateStr] = {
+                        newAvailabilityData[dateStr] = {
                             error: true,
                             message: error.message,
                             hasUserBooking: userBookings.includes(dateStr),
@@ -269,32 +258,60 @@ function Calendar({ userId, onNeedTokens, onBookingComplete }) {
                     }
                 }
 
-                setMonthAvailability(availabilityData);
+                // Actualizar el estado con los nuevos datos
+                setMonthAvailability((prevData) => ({
+                    ...prevData,
+                    ...newAvailabilityData,
+                }));
+
+                // Marcar este mes como cargado
+                setLoadedMonths((prev) => ({
+                    ...prev,
+                    [monthKey]: true,
+                }));
+
                 console.log(
-                    "Datos de disponibilidad cargados:",
-                    availabilityData
+                    `Datos de disponibilidad cargados para ${month + 1}/${year}`
                 );
             } catch (error) {
                 console.error(
-                    "Error al cargar datos de disponibilidad:",
+                    `Error al cargar datos de disponibilidad para ${
+                        month + 1
+                    }/${year}:`,
                     error
                 );
             } finally {
                 setLoadingAvailability(false);
             }
-        };
+        },
+        [userBookings]
+    );
 
-        // Cargar datos inicialmente
-        fetchAvailabilityData();
+    // Cargar datos por demanda según el mes seleccionado
+    useEffect(() => {
+        const currentMonth = selectedDateCalendar.getMonth();
+        const currentYear = selectedDateCalendar.getFullYear();
+        const monthKey = `${currentYear}-${currentMonth}`;
 
-        // Eliminar la actualización periódica - ahora solo se actualizará cuando se seleccione una hora
-        // const intervalId = setInterval(fetchAvailabilityData, 30000);
-        // return () => clearInterval(intervalId);
-    }, [
-        selectedDateCalendar.getMonth(),
-        selectedDateCalendar.getFullYear(),
-        userBookings,
-    ]);
+        // Verificar si ya hemos cargado este mes
+        if (!loadedMonths[monthKey]) {
+            // Si no lo hemos cargado, cargarlo ahora
+            fetchMonthAvailability(currentYear, currentMonth);
+
+            // También podemos precargar el mes siguiente para mejor experiencia de usuario
+            const nextMonth = currentMonth === 11 ? 0 : currentMonth + 1;
+            const nextYear =
+                currentMonth === 11 ? currentYear + 1 : currentYear;
+            const nextMonthKey = `${nextYear}-${nextMonth}`;
+
+            if (!loadedMonths[nextMonthKey]) {
+                // Precargar el mes siguiente con un pequeño retraso para no saturar el servidor
+                setTimeout(() => {
+                    fetchMonthAvailability(nextYear, nextMonth);
+                }, 1000);
+            }
+        }
+    }, [selectedDateCalendar, loadedMonths, fetchMonthAvailability]);
 
     // Manejar el cambio de mes desde el dropdown
     const handleMonthChange = (e) => {
@@ -335,9 +352,7 @@ function Calendar({ userId, onNeedTokens, onBookingComplete }) {
     };
 
     // Función para obtener el color basado en la cantidad exacta de horas disponibles
-    // Cada día tiene 10 slots posibles según la tabla predefined_times
     const getAvailabilityColor = (availableSlots) => {
-        // Convertimos a número para asegurarnos
         const slots = Number(availableSlots);
 
         if (slots === 0) {
@@ -347,7 +362,7 @@ function Calendar({ userId, onNeedTokens, onBookingComplete }) {
         } else if (slots <= 9) {
             return "#ffdd59"; // Amarillo - 6-9 horas disponibles
         } else {
-            return "#2ed573"; // Verde - 10 horas disponibles (todas)
+            return "#2ed573"; // Verde
         }
     };
 
@@ -395,7 +410,6 @@ function Calendar({ userId, onNeedTokens, onBookingComplete }) {
                         updatedAvailability[dateStr].availability = 0;
                     }
 
-                    // Agregamos log para depuración
                     console.log(
                         `Actualización tras reserva: Fecha ${dateStr}, Slots disponibles ahora: ${updatedAvailability[dateStr].availableSlots}, Usuario tiene reserva: ${updatedAvailability[dateStr].hasUserBooking}`
                     );
@@ -408,12 +422,12 @@ function Calendar({ userId, onNeedTokens, onBookingComplete }) {
             setTimeout(() => {
                 if (calendarRef.current) {
                     const calendarApi = calendarRef.current.getApi();
-                    calendarApi.render(); // Esto forzará la re-renderización del calendario
+                    calendarApi.render();
                     console.log(
                         "Calendario re-renderizado después de la reserva"
                     );
                 }
-            }, 100); // Pequeño retraso para asegurar que el estado se ha actualizado
+            }, 100);
 
             // Notificar al componente padre
             if (onBookingComplete) {
@@ -491,11 +505,9 @@ function Calendar({ userId, onNeedTokens, onBookingComplete }) {
                                     handleWindowResize={true}
                                     dateClick={handleClick}
                                     headerToolbar={{
-                                        left: "prev,next",
-                                        center: "title",
                                         right: "today",
                                     }}
-                                    locale="es" // Soporte para español
+                                    locale="en"
                                     dayCellContent={(arg) => {
                                         // Obtener la fecha en formato YYYY-MM-DD
                                         const date = arg.date;
@@ -506,7 +518,7 @@ function Calendar({ userId, onNeedTokens, onBookingComplete }) {
                                         const dayData =
                                             monthAvailability[dateStr];
 
-                                        let circleColor = "#e0e0e0"; // Color por defecto (gris)
+                                        let circleColor = "#e0e0e0";
                                         let hasUserBooking = false;
                                         let availableSlots = 0;
 
@@ -518,30 +530,21 @@ function Calendar({ userId, onNeedTokens, onBookingComplete }) {
                                                 dayData.availableSlots
                                             );
 
-                                            // Log para depuración
-                                            console.log(
-                                                `Renderizando día ${dateStr}: Slots disponibles = ${availableSlots}, tipo: ${typeof availableSlots}, Reserva del usuario: ${hasUserBooking}`
-                                            );
-
                                             if (
                                                 dayData.isPast ||
                                                 dayData.error
                                             ) {
-                                                circleColor = "#e0e0e0"; // Solo para días con error mostraremos gris
+                                                circleColor = "#e0e0e0";
                                             } else {
                                                 // Usar nuestra función para determinar el color basado en la cantidad de slots disponibles
                                                 circleColor =
                                                     getAvailabilityColor(
                                                         availableSlots
                                                     );
-                                                console.log(
-                                                    `Color asignado para ${availableSlots} slots: ${circleColor}`
-                                                );
                                             }
                                         }
 
                                         // Crear el HTML para el círculo de disponibilidad y el check de reserva
-                                        // Hacemos más visible el check
                                         return {
                                             html: `
                                                 <div class="fc-daygrid-day-top">
@@ -550,7 +553,7 @@ function Calendar({ userId, onNeedTokens, onBookingComplete }) {
                                                         <div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${circleColor}; text-decoration: none !important; border-bottom: none !important;"></div>
                                                         ${
                                                             hasUserBooking
-                                                                ? '<i class="fas fa-check-circle" style="color: #2ed573; font-size: 14px; text-decoration: none !important; border-bottom: none !important;"></i>'
+                                                                ? '<i class="fas fa-check-circle" style="color:rgb(61, 164, 248); font-size: 14px; text-decoration: none !important; border-bottom: none !important;"></i>'
                                                                 : ""
                                                         }
                                                     </div>

@@ -212,7 +212,7 @@ export const getAvailableHoursForDate = async (date) => {
 };
 
 // Habilitar una hora para una fecha específica (compatibilidad)
-export const addAvailableHour = async (date, timeId, createdBy) => {
+export const addAvailableHour = async (date, timeId) => {
     try {
         // Ahora usamos la nueva funcionalidad de habilitar (eliminar de deshabilitadas)
         return await enableHour(date, timeId);

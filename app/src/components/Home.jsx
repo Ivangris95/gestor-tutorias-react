@@ -1,5 +1,5 @@
 import "animate.css";
-import { useState, useEffect, useRef, use } from "react";
+import { useState, useEffect, useRef } from "react";
 import Calendar from "./Views/Calendar";
 import PaymentGateway from "./PaymentComponents/PaymentGateway";
 import AdminPanel from "./AdminComponents/AdminPanel";

@@ -13,8 +13,6 @@ exports.getDisabledHoursForDate = async (req, res) => {
     }
 
     try {
-        console.log("Ejecutando consulta para fecha:", date);
-
         const query = `
             SELECT time_id 
             FROM disabled_hours 
@@ -23,8 +21,6 @@ exports.getDisabledHoursForDate = async (req, res) => {
 
         // Usar la función query que devuelve una promesa
         const results = await db.query(query, [date]);
-
-        console.log("Resultados de la consulta:", results);
 
         // Extraer solo los IDs de las horas deshabilitadas
         const disabledHours = results.map((row) => row.time_id);
