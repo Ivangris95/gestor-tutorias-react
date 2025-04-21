@@ -82,7 +82,7 @@ function Home({ onLogout }) {
     // Handler para cuando se realiza una reserva exitosa
     const handleBookingComplete = () => {
         console.log("Reserva completada, actualizando tokens");
-        updateTokensDisplay(); // Actualizar los tokens mostrados
+        updateTokensDisplay();
 
         // Activar la animación de la campana cuando se completa una reserva
         if (navbarRef.current) {
@@ -107,6 +107,12 @@ function Home({ onLogout }) {
         }
     };
 
+    // Nuevo handler para cuando se cancela una reserva
+    const handleBookingCancelled = () => {
+        console.log("Reserva cancelada, actualizando tokens");
+        updateTokensDisplay();
+    };
+
     // Handler para mostrar/ocultar el panel de administración
     const handleShowAdminPanel = (value) => {
         setShowAdminPanel(value);
@@ -114,7 +120,7 @@ function Home({ onLogout }) {
 
     return (
         <div className="d-flex flex-column vh-100">
-            {/* Navbar - Pasamos la referencia para poder animar la campana */}
+            {/* Navbar*/}
             <div ref={navbarRef}>
                 <Navbar
                     username={username}
@@ -173,6 +179,7 @@ function Home({ onLogout }) {
                         userId={userId}
                         onNeedTokens={handleNeedTokens}
                         onBookingComplete={handleBookingComplete}
+                        onBookingCancelled={handleBookingCancelled}
                     />
                 )}
             </div>

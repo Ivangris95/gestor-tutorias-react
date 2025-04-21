@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Alert } from "@mui/material";
 import { useCustomAlert } from "../Alert/CustomAlert"; // Importar nuestro hook personalizado
 
-function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
+function Hours({ selectedDate, onHourSelect, onHourCancel, onNeedTokens }) {
     const [hours, setHours] = useState([]);
     const [bookedSlots, setBookedSlots] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -98,7 +98,6 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
 
                 if (bookedResponse.ok) {
                     const bookedData = await bookedResponse.json();
-                    console.log("Datos de horas reservadas:", bookedData);
 
                     if (bookedData.success) {
                         setBookedSlots(bookedData.bookedSlots || []);
@@ -218,7 +217,6 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                 return;
             }
 
-            // Primera opción: verificar tokens directamente
             const tokensResponse = await fetch(
                 `http://localhost:5000/api/users/${userData.id}/tokens`
             );
@@ -249,7 +247,7 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
             // Datos a enviar al servidor
             const bookingData = {
                 userId: userData.id,
-                timeId: hour.time_id, // Cambiado de slotId a timeId
+                timeId: hour.time_id,
                 slotDate: formatDate(selectedDate),
             };
 
@@ -342,7 +340,6 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
 
     // Abrir el diálogo de confirmación para cancelar
     const openCancelDialog = (hour, event) => {
-        // Detener propagación para evitar que el clic en la X afecte al botón completo
         event.stopPropagation();
 
         // Verificar si falta menos de una hora
@@ -448,7 +445,10 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                     })
                 );
 
-                if (onHourSelect) {
+                if (onHourCancel) {
+                    onHourCancel(hour);
+                } else if (onHourSelect) {
+                    // Compatibilidad con versiones anteriores si no existe onHourCancel
                     onHourSelect(hour, true);
                 }
             }
@@ -584,7 +584,6 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                 </p>
             )}
 
-            {/* Incluir los componentes de alerta y diálogo */}
             <AlertComponent />
             <ConfirmDialogComponent />
         </div>
