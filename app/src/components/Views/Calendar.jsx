@@ -318,6 +318,16 @@ function Calendar({
         setTimeout(() => {
             fetchMonthAvailability(nextYear, nextMonth);
         }, 1000);
+
+        setTimeout(() => {
+            if (calendarRef.current) {
+                const calendarApi = calendarRef.current.getApi();
+                calendarApi.render();
+                console.log(
+                    "Calendario re-renderizado después de cargar disponibilidad"
+                );
+            }
+        }, 1500);
     }, [selectedDateCalendar, fetchMonthAvailability]);
 
     const handleMonthChange = (e) => {
@@ -678,7 +688,7 @@ function Calendar({
                                         const dayData =
                                             monthAvailability[dateStr];
 
-                                        let circleColor = "#e0e0e0";
+                                        let circleColor = "#e0e0e0"; // Color por defecto (gris)
                                         let hasUserBooking = false;
                                         let availableSlots = 0;
 
@@ -691,21 +701,26 @@ function Calendar({
                                             );
 
                                             if (
-                                                dayData.hasUserBooking ||
-                                                availableSlots < 7
-                                            )
-                                                if (
-                                                    dayData.isPast ||
-                                                    dayData.error
+                                                dayData.isPast ||
+                                                dayData.error
+                                            ) {
+                                                circleColor = "#e0e0e0"; // Gris para días pasados o con error
+                                            } else {
+                                                // Determinar el color basado en slots disponibles
+                                                if (availableSlots === 0) {
+                                                    circleColor = "#ff6b6b"; // Rojo - No hay disponibilidad
+                                                } else if (
+                                                    availableSlots <= 3
                                                 ) {
-                                                    circleColor = "#e0e0e0";
+                                                    circleColor = "#ffa502"; // Naranja - Baja disponibilidad
+                                                } else if (
+                                                    availableSlots <= 6
+                                                ) {
+                                                    circleColor = "#ffdd59"; // Amarillo - Media disponibilidad
                                                 } else {
-                                                    // Usar nuestra función para determinar el color basado en la cantidad de slots disponibles
-                                                    circleColor =
-                                                        getAvailabilityColor(
-                                                            availableSlots
-                                                        );
+                                                    circleColor = "#2ed573"; // Verde - Alta disponibilidad
                                                 }
+                                            }
                                         }
 
                                         // Crear el HTML para el círculo de disponibilidad y el check de reserva
