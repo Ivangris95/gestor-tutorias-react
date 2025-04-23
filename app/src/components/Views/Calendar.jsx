@@ -587,7 +587,7 @@ function Calendar({
         const dateStr = formatDate(date);
         const dayData = monthAvailability[dateStr];
 
-        if (dayData && (dayData.availableSlots === 0 || dayData.isPast)) {
+        if (dayData && dayData.isPast) {
             // No permitir seleccionar días sin disponibilidad
             return;
         }
