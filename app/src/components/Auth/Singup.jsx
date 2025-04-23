@@ -8,6 +8,7 @@ function Singup({ onAuthenticate }) {
     const [confirmPassword, setConfirmPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -43,6 +44,10 @@ function Singup({ onAuthenticate }) {
         } finally {
             setLoading(false);
         }
+    };
+
+    const togglePasswordVisibility = () => {
+        setShowPassword(!showPassword);
     };
 
     return (
@@ -92,7 +97,7 @@ function Singup({ onAuthenticate }) {
                     Password
                 </label>
                 <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     className="form-control"
                     id="exampleInputPassword1"
                     placeholder="Password"
@@ -100,13 +105,28 @@ function Singup({ onAuthenticate }) {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                 />
+                <span
+                    onClick={togglePasswordVisibility}
+                    style={{
+                        position: "absolute",
+                        transform: "translateY(-130%)",
+                        right: "50px",
+                        cursor: "pointer",
+                    }}
+                >
+                    {showPassword ? (
+                        <i class="fa-solid fa-eye-slash"></i>
+                    ) : (
+                        <i class="fa-solid fa-eye"></i>
+                    )}
+                </span>
             </div>
             <div className="form-group mb-3">
                 <label htmlFor="confirmPassword" className="mb-2 fw-semibold">
                     Confirm Password
                 </label>
                 <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     className="form-control"
                     id="confirmPassword"
                     placeholder="Confirm Password"
@@ -114,6 +134,21 @@ function Singup({ onAuthenticate }) {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                 />
+                <span
+                    onClick={togglePasswordVisibility}
+                    style={{
+                        position: "absolute",
+                        transform: "translateY(-130%)",
+                        right: "50px",
+                        cursor: "pointer",
+                    }}
+                >
+                    {showPassword ? (
+                        <i class="fa-solid fa-eye-slash"></i>
+                    ) : (
+                        <i class="fa-solid fa-eye"></i>
+                    )}
+                </span>
             </div>
             <div className="form-group text-center mt-3">
                 <button type="submit" className="btn btn-primary w-100">

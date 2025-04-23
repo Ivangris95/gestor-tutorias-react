@@ -6,6 +6,7 @@ function SingIn({ onAuthenticate }) {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -35,6 +36,10 @@ function SingIn({ onAuthenticate }) {
         }
     };
 
+    const togglePasswordVisibility = () => {
+        setShowPassword(!showPassword);
+    };
+
     return (
         <div className="px-lg-3">
             <h3 className="mb-5 text-center">Sing In</h3>
@@ -55,13 +60,28 @@ function SingIn({ onAuthenticate }) {
 
                 <div className="mb-5">
                     <input
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         className="form-control"
                         placeholder="Password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
                     />
+                    <span
+                        onClick={togglePasswordVisibility}
+                        style={{
+                            position: "absolute",
+                            transform: "translateY(-130%)",
+                            right: "50px",
+                            cursor: "pointer",
+                        }}
+                    >
+                        {showPassword ? (
+                            <i class="fa-solid fa-eye-slash"></i>
+                        ) : (
+                            <i class="fa-solid fa-eye"></i>
+                        )}
+                    </span>
                 </div>
 
                 <button
@@ -69,7 +89,7 @@ function SingIn({ onAuthenticate }) {
                     className="btn btn-primary w-100 mt-5"
                     disabled={loading}
                 >
-                    {loading ? "Cargando..." : "Iniciar Sesión"}
+                    {loading ? "Loading..." : "Iniciar Sesión"}
                 </button>
             </form>
         </div>
