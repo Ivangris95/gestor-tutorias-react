@@ -275,11 +275,10 @@ exports.cancelBooking = async (req, res) => {
             });
         }
 
-        // 3. Actualizar el estado de la reserva a 'cancelled'
-        await connection.execute(
-            "UPDATE bookings SET status = 'cancelled' WHERE booking_id = ?",
-            [bookingId]
-        );
+        // 3. ELIMINAR la reserva en lugar de solo marcarla como cancelada
+        await connection.execute("DELETE FROM bookings WHERE booking_id = ?", [
+            bookingId,
+        ]);
 
         // 4. Marcar el slot como disponible nuevamente
         await connection.execute(
