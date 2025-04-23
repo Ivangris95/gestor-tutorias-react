@@ -14,7 +14,6 @@ function Calendar({
     const [selectedDate, setSelectedDate] = useState("");
     const [selectedDateObj, setSelectedDateObj] = useState(null);
     const [monthAvailability, setMonthAvailability] = useState({});
-    const [loadingAvailability, setLoadingAvailability] = useState(false);
     const [loadedMonths, setLoadedMonths] = useState({});
     const [userBookings, setUserBookings] = useState([]);
 
@@ -146,8 +145,6 @@ function Calendar({
                 );
                 return;
             }
-
-            setLoadingAvailability(true);
 
             try {
                 console.log(
@@ -295,8 +292,6 @@ function Calendar({
                     }/${year}:`,
                     error
                 );
-            } finally {
-                setLoadingAvailability(false);
             }
         },
         [userBookings, loadedMonths]
@@ -657,13 +652,6 @@ function Calendar({
                                         </select>
                                     </div>
                                 </div>
-
-                                {/* Indicador de carga de disponibilidad */}
-                                {loadingAvailability && (
-                                    <div className="availability-loading">
-                                        <small>Loading availability...</small>
-                                    </div>
-                                )}
 
                                 <FullCalendar
                                     ref={calendarRef}
