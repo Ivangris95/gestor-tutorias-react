@@ -2,7 +2,6 @@ import React from "react";
 import NotificationsPanel from "../Views/NotificationsPanel";
 
 function Navbar({
-    username,
     tokens,
     loading,
     isAdmin,
@@ -37,7 +36,7 @@ function Navbar({
                     {/* Billetera */}
                     <a
                         href="#"
-                        className="text-decoration-none nav-link text-white me-5"
+                        className="text-decoration-none nav-link text-white me-4 me-md-5"
                         onClick={(e) => {
                             e.preventDefault();
                             onTogglePaymentGateway(true);
