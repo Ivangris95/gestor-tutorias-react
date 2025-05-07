@@ -115,9 +115,9 @@ function Singup({ onAuthenticate }) {
                     }}
                 >
                     {showPassword ? (
-                        <i class="fa-solid fa-eye-slash"></i>
+                        <i className="fa-regular fa-eye-slash"></i>
                     ) : (
-                        <i class="fa-solid fa-eye"></i>
+                        <i className="fa-regular fa-eye"></i>
                     )}
                 </span>
             </div>
@@ -144,9 +144,9 @@ function Singup({ onAuthenticate }) {
                     }}
                 >
                     {showPassword ? (
-                        <i class="fa-solid fa-eye-slash"></i>
+                        <i className="fa-regular fa-eye-slash"></i>
                     ) : (
-                        <i class="fa-solid fa-eye"></i>
+                        <i className="fa-regular fa-eye"></i>
                     )}
                 </span>
             </div>

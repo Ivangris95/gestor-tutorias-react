@@ -41,13 +41,11 @@ function SingIn({ onAuthenticate }) {
     };
 
     return (
-        <div className="px-lg-3">
-            <h3 className="mb-5 text-center">Sing In</h3>
-
+        <div className="px-lg-4 py-lg-5">
             {error && <div className="alert alert-danger">{error}</div>}
 
-            <form onSubmit={handleSubmit}>
-                <div className="mb-3">
+            <form onSubmit={handleSubmit} className="py-lg-5 ">
+                <div className="mb-4">
                     <input
                         type="text"
                         className="form-control"
@@ -72,14 +70,14 @@ function SingIn({ onAuthenticate }) {
                         style={{
                             position: "absolute",
                             transform: "translateY(-130%)",
-                            right: "50px",
+                            right: "60px",
                             cursor: "pointer",
                         }}
                     >
                         {showPassword ? (
-                            <i class="fa-solid fa-eye-slash"></i>
+                            <i className="fa-regular fa-eye-slash"></i>
                         ) : (
-                            <i class="fa-solid fa-eye"></i>
+                            <i className="fa-regular fa-eye"></i>
                         )}
                     </span>
                 </div>

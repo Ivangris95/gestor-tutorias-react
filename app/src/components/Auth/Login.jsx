@@ -23,15 +23,15 @@ function Login({ onLoginSuccess }) {
 
     return (
         <div className="container-fluid">
-            <div className="row min-vh-100">
+            <div className="row min-vh-100 ">
                 <div className="col-12 d-flex justify-content-center align-items-center py-4">
                     <div
                         className="card shadow-lg border-0"
                         style={{ maxWidth: "900px", width: "100%" }}
                     >
-                        <div className="row g-0" style={{ minHeight: "550px" }}>
+                        <div className="row g-1" style={{ minHeight: "550px" }}>
                             {/* Panel izquierdo - Solo visible en md y más grande */}
-                            <div className="col-lg-7 col-md-6 bg-primary text-white d-none d-md-block">
+                            <div className="col-lg-7 col-md-6 bg-primary text-white d-none d-md-block rounded-start-2">
                                 <div className="d-flex flex-column justify-content-center align-items-center h-100 p-5">
                                     <h1
                                         className="mb-4 fw-bold"
@@ -54,25 +54,23 @@ function Login({ onLoginSuccess }) {
                                             textAlign: "center",
                                         }}
                                     >
-                                        TutorSync es una plataforma educativa de
-                                        vanguardia que conecta a profesionales e
-                                        instructores con estudiantes en un
-                                        entorno de aprendizaje dinámico y
-                                        personalizado.
+                                        TutorSync is a cutting-edge educational
+                                        platform that connects professionals and
+                                        instructors with students in a dynamic
+                                        and personalized learning environment.
                                         <br />
                                         <br />
-                                        Facilitamos la excelencia educativa
-                                        mediante herramientas innovadoras que
-                                        permiten crear, gestionar y participar
-                                        en experiencias formativas de máxima
-                                        calidad.
+                                        We facilitate educational excellence
+                                        through innovative tools that allow you
+                                        to create, manage, and participate in
+                                        high-quality learning experiences.
                                     </p>
                                     <div className="mt-3 d-flex gap-2">
                                         <span className="badge bg-white text-primary fs-6">
-                                            Tutoriales en vivo
+                                            Live classes
                                         </span>
                                         <span className="badge bg-white text-primary fs-6">
-                                            Aprendizaje interactivo
+                                            Engaging learning
                                         </span>
                                     </div>
                                 </div>
@@ -99,7 +97,7 @@ function Login({ onLoginSuccess }) {
                                         </p>
                                     </div>
 
-                                    <div className="text-center mb-4">
+                                    <div className="text-center mb-4 mt-5">
                                         <div
                                             className="btn-group"
                                             role="group"
