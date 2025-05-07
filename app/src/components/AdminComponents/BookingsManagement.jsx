@@ -4,8 +4,9 @@ import {
     getBookings,
     updateBookingStatus,
     getBookingDetails,
+    deleteBooking,
 } from "../../services/adminService";
-import { useCustomAlert } from "../Alert/CustomAlert"; // Importamos nuestro hook personalizado
+import { useCustomAlert } from "../Alert/CustomAlert";
 
 function BookingsManagement() {
     const [bookings, setBookings] = useState([]);
@@ -31,9 +32,9 @@ function BookingsManagement() {
             setBookings(data);
             setError(null);
         } catch (err) {
-            setError("Error loading reservations");
+            setError("There was an error loading the bookings.");
             showAlert({
-                message: "Error loading the reservations",
+                message: "There was an error loading the bookings.",
                 severity: "error",
             });
             console.error(err);
@@ -52,42 +53,94 @@ function BookingsManagement() {
         setFilterDate(e.target.value);
     };
 
-    // Manejar cambio de estado de reserva
-    const handleStatusChange = async (bookingId, newStatus) => {
-        // En lugar de window.confirm, usamos nuestro diálogo personalizado
+    // Manejar cuando una tutoría ha sido completada (sin cambios)
+    const handleMarkAsCompleted = async (bookingId) => {
         showConfirmDialog({
-            title: "Confirm state change",
-            message: `Are you sure you want to change the state to "${
-                newStatus === "completed" ? "Completed" : "Canceled"
-            }?"`,
-            confirmButtonText: "Yes, change",
+            title: "Confirm status change.",
+            message:
+                "Are you sure you want to mark this tutoring session as Completed?",
+            confirmButtonText: "Yes, complete",
             cancelButtonText: "Cancel",
-            confirmButtonColor: newStatus === "completed" ? "success" : "error",
+            confirmButtonColor: "success",
             onConfirm: async () => {
                 try {
                     setLoading(true);
-                    await updateBookingStatus(bookingId, newStatus);
+                    await updateBookingStatus(bookingId, "completed");
 
                     // Actualizar la lista de reservas
                     setBookings(
                         bookings.map((booking) =>
                             booking.booking_id === bookingId
-                                ? { ...booking, status: newStatus }
+                                ? { ...booking, status: "completed" }
                                 : booking
                         )
                     );
 
                     // Mostrar mensaje de éxito con nuestra alerta personalizada
                     showAlert({
-                        message: "State updated successfully",
+                        message:
+                            "Tutoring session marked as completed successfully",
                         severity: "success",
                     });
                 } catch (err) {
-                    setError("Error updating state");
+                    setError("Error updating the status");
                     showAlert({
-                        message: "Error updating reservation state",
+                        message:
+                            "Error marking the tutoring session as completed",
                         severity: "error",
                     });
+
+                    console.error(err);
+                } finally {
+                    setLoading(false);
+                }
+            },
+        });
+    };
+
+    // Función modificada para CANCELAR tutorías
+    const handleCancelBooking = async (bookingId) => {
+        showConfirmDialog({
+            title: "Cancel Tutoring Session",
+            message:
+                "Are you sure you want to cancel this tutoring session? This will free up the time so other users can book it again.",
+            confirmButtonText: "Yes, cancel",
+            cancelButtonText: "No",
+            confirmButtonColor: "error",
+            onConfirm: async () => {
+                try {
+                    setLoading(true);
+                    await deleteBooking(bookingId);
+
+                    // Actualizar la lista de reservas
+                    setBookings(
+                        bookings.filter(
+                            (booking) => booking.booking_id !== bookingId
+                        )
+                    );
+
+                    // Si el modal de detalles está abierto y es la misma reserva, cerrarlo
+                    if (
+                        showDetailsModal &&
+                        bookingDetails &&
+                        bookingDetails.booking_id === bookingId
+                    ) {
+                        setShowDetailsModal(false);
+                    }
+
+                    // Mostrar mensaje de éxito
+                    showAlert({
+                        message:
+                            "Tutoring session cancelled and time slot freed up successfully",
+                        severity: "success",
+                    });
+                } catch (err) {
+                    setError("Error cancelling the tutoring session");
+                    showAlert({
+                        message: "Error cancelling the tutoring session",
+                        severity: "error",
+                    });
+
                     console.error(err);
                 } finally {
                     setLoading(false);
@@ -104,9 +157,9 @@ function BookingsManagement() {
             setBookingDetails(details);
             setShowDetailsModal(true);
         } catch (err) {
-            setError("Error al obtener detalles de la reserva");
+            setError("Error getting booking details");
             showAlert({
-                message: "Error al obtener los detalles de la reserva",
+                message: "Error getting the booking details",
                 severity: "error",
             });
             console.error(err);
@@ -124,7 +177,7 @@ function BookingsManagement() {
     return (
         <div className="card">
             <div className="card-body">
-                <h5 className="card-title">Assigned Tutorials.</h5>
+                <h5 className="card-title">Tutorías Asignadas</h5>
 
                 {error && (
                     <Alert severity="error" sx={{ mb: 2 }}>
@@ -134,7 +187,7 @@ function BookingsManagement() {
 
                 <div className="mb-3">
                     <label htmlFor="filterDate" className="form-label">
-                        Filter by date.
+                        Filter by date
                     </label>
                     <input
                         type="date"
@@ -145,10 +198,10 @@ function BookingsManagement() {
                     />
                 </div>
 
-                {loading && <p>Loading reservations....</p>}
+                {loading && <p>Loading bookings....</p>}
 
                 {!loading && bookings.length === 0 ? (
-                    <p>There are no reservations to show.</p>
+                    <p>There are no bookings to show. </p>
                 ) : (
                     <div className="table-responsive">
                         <table className="table table-striped">
@@ -213,9 +266,8 @@ function BookingsManagement() {
                                                         <button
                                                             className="btn btn-sm btn-success me-2"
                                                             onClick={() =>
-                                                                handleStatusChange(
-                                                                    booking.booking_id,
-                                                                    "completed"
+                                                                handleMarkAsCompleted(
+                                                                    booking.booking_id
                                                                 )
                                                             }
                                                         >
@@ -224,11 +276,11 @@ function BookingsManagement() {
                                                         <button
                                                             className="btn btn-sm btn-danger"
                                                             onClick={() =>
-                                                                handleStatusChange(
-                                                                    booking.booking_id,
-                                                                    "cancelled"
+                                                                handleCancelBooking(
+                                                                    booking.booking_id
                                                                 )
                                                             }
+                                                            title="Cancel and free up time slot"
                                                         >
                                                             Cancel
                                                         </button>
@@ -257,7 +309,7 @@ function BookingsManagement() {
                             <div className="modal-content">
                                 <div className="modal-header">
                                     <h5 className="modal-title">
-                                        Detalles de la Tutoría
+                                        Tutoring Session Details
                                     </h5>
                                     <button
                                         type="button"
@@ -270,9 +322,9 @@ function BookingsManagement() {
                                 <div className="modal-body">
                                     <div className="row mb-3">
                                         <div className="col-md-6">
-                                            <h6>Información del Estudiante</h6>
+                                            <h6>Student Information</h6>
                                             <p>
-                                                <strong>Nombre:</strong>{" "}
+                                                <strong>Name:</strong>{" "}
                                                 {bookingDetails.student_name}
                                             </p>
                                             <p>
@@ -281,15 +333,17 @@ function BookingsManagement() {
                                             </p>
                                         </div>
                                         <div className="col-md-6">
-                                            <h6>Información de la Tutoría</h6>
+                                            <h6>
+                                                Tutoring Session Information
+                                            </h6>
                                             <p>
-                                                <strong>Fecha:</strong>{" "}
+                                                <strong>Date:</strong>{" "}
                                                 {new Date(
                                                     bookingDetails.slot_date
                                                 ).toLocaleDateString()}
                                             </p>
                                             <p>
-                                                <strong>Horario:</strong>{" "}
+                                                <strong>Time:</strong>{" "}
                                                 {formatTime(
                                                     bookingDetails.start_time
                                                 )}{" "}
@@ -299,20 +353,18 @@ function BookingsManagement() {
                                                 )}
                                             </p>
                                             <p>
-                                                <strong>
-                                                    Tokens utilizados:
-                                                </strong>{" "}
+                                                <strong>Tokens used:</strong>{" "}
                                                 {bookingDetails.tokens_used}
                                             </p>
                                             <p>
-                                                <strong>Estado:</strong>{" "}
+                                                <strong>Status:</strong>{" "}
                                                 {bookingDetails.status ===
                                                 "upcoming"
-                                                    ? "Pendiente"
+                                                    ? "Pending"
                                                     : bookingDetails.status ===
                                                       "completed"
-                                                    ? "Completada"
-                                                    : "Cancelada"}
+                                                    ? "Completed"
+                                                    : "Cancelled"}
                                             </p>
                                         </div>
                                     </div>
@@ -320,9 +372,9 @@ function BookingsManagement() {
                                     {bookingDetails.zoom_link && (
                                         <div className="row mb-3">
                                             <div className="col-12">
-                                                <h6>Información de Zoom</h6>
+                                                <h6>Zoom Information</h6>
                                                 <p>
-                                                    <strong>Enlace:</strong>{" "}
+                                                    <strong>Link:</strong>{" "}
                                                     <a
                                                         href={
                                                             bookingDetails.zoom_link
@@ -338,7 +390,7 @@ function BookingsManagement() {
                                                 {bookingDetails.meeting_id && (
                                                     <p>
                                                         <strong>
-                                                            ID de Reunión:
+                                                            Meeting ID:
                                                         </strong>{" "}
                                                         {
                                                             bookingDetails.meeting_id
@@ -348,7 +400,7 @@ function BookingsManagement() {
                                                 {bookingDetails.meeting_password && (
                                                     <p>
                                                         <strong>
-                                                            Contraseña:
+                                                            Password:
                                                         </strong>{" "}
                                                         {
                                                             bookingDetails.meeting_password
@@ -362,7 +414,7 @@ function BookingsManagement() {
                                     {bookingDetails.notes && (
                                         <div className="row">
                                             <div className="col-12">
-                                                <h6>Notas</h6>
+                                                <h6>Notes</h6>
                                                 <p>{bookingDetails.notes}</p>
                                             </div>
                                         </div>
@@ -376,7 +428,7 @@ function BookingsManagement() {
                                             setShowDetailsModal(false)
                                         }
                                     >
-                                        Cerrar
+                                        Close
                                     </button>
 
                                     {bookingDetails.status === "upcoming" && (
@@ -385,27 +437,25 @@ function BookingsManagement() {
                                                 type="button"
                                                 className="btn btn-success"
                                                 onClick={() => {
-                                                    handleStatusChange(
-                                                        bookingDetails.booking_id,
-                                                        "completed"
+                                                    handleMarkAsCompleted(
+                                                        bookingDetails.booking_id
                                                     );
                                                     setShowDetailsModal(false);
                                                 }}
                                             >
-                                                Marcar como Completada
+                                                Mark as Completed
                                             </button>
                                             <button
                                                 type="button"
                                                 className="btn btn-danger"
                                                 onClick={() => {
-                                                    handleStatusChange(
-                                                        bookingDetails.booking_id,
-                                                        "cancelled"
+                                                    handleCancelBooking(
+                                                        bookingDetails.booking_id
                                                     );
                                                     setShowDetailsModal(false);
                                                 }}
                                             >
-                                                Cancelar Tutoría
+                                                Cancel Tutoring Session
                                             </button>
                                         </>
                                     )}
