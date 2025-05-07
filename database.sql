@@ -141,86 +141,14 @@ CREATE TABLE disabled_hours (
     FOREIGN KEY (admin_id) REFERENCES users (user_id)
 );
 
-
--- Crear la base de datos si no existe
-CREATE DATABASE IF NOT EXISTS tutorsync;
-USE tutorsync;
-
--- Tabla de Usuarios
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE IF NOT EXISTS app_settings (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  username VARCHAR(50) NOT NULL UNIQUE,
-  password VARCHAR(255) NOT NULL,
-  email VARCHAR(100) NOT NULL UNIQUE,
-  full_name VARCHAR(100) NOT NULL,
-  role ENUM('student', 'tutor', 'admin') NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  zoom_access_token TEXT,
+  zoom_refresh_token TEXT,
+  zoom_token_expiry DATETIME NULL
 );
 
--- Tabla de Perfiles
-CREATE TABLE IF NOT EXISTS profiles (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
-  bio TEXT,
-  profile_picture VARCHAR(255),
-  hourly_rate DECIMAL(10,2) DEFAULT 0,
-  specialty VARCHAR(100),
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
--- Tabla de Tutorías
-CREATE TABLE IF NOT EXISTS tutorials (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  tutor_id INT NOT NULL,
-  student_id INT NOT NULL,
-  title VARCHAR(100) NOT NULL,
-  description TEXT,
-  start_time DATETIME NOT NULL,
-  end_time DATETIME NOT NULL,
-  status ENUM('scheduled', 'completed', 'cancelled') DEFAULT 'scheduled',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (tutor_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
--- Tabla de Pagos
-CREATE TABLE IF NOT EXISTS payments (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  tutorial_id INT NOT NULL,
-  amount DECIMAL(10,2) NOT NULL,
-  currency VARCHAR(3) DEFAULT 'USD',
-  payment_method ENUM('paypal', 'stripe', 'other') NOT NULL,
-  transaction_id VARCHAR(255),
-  status ENUM('pending', 'completed', 'failed', 'refunded') DEFAULT 'pending',
-  payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (tutorial_id) REFERENCES tutorials(id) ON DELETE CASCADE
-);
-
--- Tabla de Reseñas
-CREATE TABLE IF NOT EXISTS reviews (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  tutorial_id INT NOT NULL,
-  reviewer_id INT NOT NULL,
-  rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
-  comment TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (tutorial_id) REFERENCES tutorials(id) ON DELETE CASCADE,
-  FOREIGN KEY (reviewer_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
--- Tabla de Mensajes
-CREATE TABLE IF NOT EXISTS messages (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  sender_id INT NOT NULL,
-  receiver_id INT NOT NULL,
-  content TEXT NOT NULL,
-  read_status BOOLEAN DEFAULT FALSE,
-  sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
-);
+INSERT IGNORE INTO app_settings (id) VALUES (1);
 
 -- Datos de ejemplo (opcional)
 
@@ -238,7 +166,9 @@ INSERT INTO predefined_times (start_time, end_time) VALUES
 ('10:00:00', '11:00:00'),
 ('11:00:00', '12:00:00'),
 ('12:00:00', '13:00:00'),
-('13:00:00', '16:00:00'),
+('13:00:00', '14:00:00'),
+('14:00:00', '15:00:00'),
+('15:00:00', '16:00:00'),
 ('17:00:00', '18:00:00'),
 ('18:00:00', '19:00:00'),
 ('19:00:00', '20:00:00'),
