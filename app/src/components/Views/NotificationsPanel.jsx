@@ -88,21 +88,17 @@ function NotificationsPanel() {
             return;
         }
 
-        // Si no tiene enlace pero tenemos los datos de la reunión, construir la URL
         if (booking.meeting_id) {
             const baseUrl = "https://zoom.us/j/";
             let zoomUrl = `${baseUrl}${booking.meeting_id}`;
-
-            // Añadir contraseña si está disponible
             if (booking.meeting_password) {
                 zoomUrl += `?pwd=${booking.meeting_password}`;
             }
-
             window.open(zoomUrl, "_blank");
             return;
         }
 
-        // Si no hay datos suficientes, mostrar un mensaje con nuestra alerta personalizada
+        // Si no hay datos suficientes, mostrar un mensaje
         showAlert({
             message: "The Zoom link for this tutorial is not available yet.",
             severity: "warning",
