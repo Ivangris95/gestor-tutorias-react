@@ -14,6 +14,7 @@ function Home({ onLogout }) {
     const [loading, setLoading] = useState(true);
     const [needTokens, setNeedTokens] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
+    const [userId, setUserId] = useState(null); // Añadimos un state para el ID del usuario
     const navbarRef = useRef();
 
     // Función para obtener los tokens del usuario
@@ -37,6 +38,9 @@ function Home({ onLogout }) {
             const user = JSON.parse(userString);
             setUsername(user.username);
 
+            // Guardar el ID del usuario para pasarlo al Calendar
+            setUserId(user.id);
+
             // Verificar si el usuario es administrador
             console.log("Objeto usuario:", user);
             setIsAdmin(user.isAdmin === true || user.isAdmin === 1);
@@ -52,7 +56,7 @@ function Home({ onLogout }) {
     const handleTogglePaymentGateway = (value) => {
         setShowPaymentGateway(value);
         if (!value) {
-            setNeedTokens(false); // Reiniciar el estado de necesidad de tokens
+            setNeedTokens(false);
         }
     };
 
@@ -78,7 +82,7 @@ function Home({ onLogout }) {
     // Handler para cuando se realiza una reserva exitosa
     const handleBookingComplete = () => {
         console.log("Reserva completada, actualizando tokens");
-        updateTokensDisplay(); // Actualizar los tokens mostrados
+        updateTokensDisplay();
 
         // Activar la animación de la campana cuando se completa una reserva
         if (navbarRef.current) {
@@ -103,6 +107,12 @@ function Home({ onLogout }) {
         }
     };
 
+    // Nuevo handler para cuando se cancela una reserva
+    const handleBookingCancelled = () => {
+        console.log("Reserva cancelada, actualizando tokens");
+        updateTokensDisplay();
+    };
+
     // Handler para mostrar/ocultar el panel de administración
     const handleShowAdminPanel = (value) => {
         setShowAdminPanel(value);
@@ -110,7 +120,7 @@ function Home({ onLogout }) {
 
     return (
         <div className="d-flex flex-column vh-100">
-            {/* Navbar - Pasamos la referencia para poder animar la campana */}
+            {/* Navbar*/}
             <div ref={navbarRef}>
                 <Navbar
                     username={username}
@@ -124,9 +134,25 @@ function Home({ onLogout }) {
             </div>
 
             <div>
-                <h2 className="my-5 text-center text-primary">
-                    Welcome back, <span className="text-dark">{username}</span>
-                </h2>
+                {!showPaymentGateway && (
+                    <>
+                        <h2 className="my-4 text-center text-primary">
+                            Welcome back,{" "}
+                            <span className="text-dark">{username}</span>
+                        </h2>
+                        <a
+                            href="#"
+                            className="my-4 text-center text-primary fs-4"
+                            style={{ textDecoration: "none" }}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                handleTogglePaymentGateway(true);
+                            }}
+                        >
+                            <p className="flashing">Buy your tokens here!</p>
+                        </a>
+                    </>
+                )}
 
                 {needTokens && showPaymentGateway && (
                     <div
@@ -150,8 +176,10 @@ function Home({ onLogout }) {
                     <AdminPanel />
                 ) : (
                     <Calendar
+                        userId={userId}
                         onNeedTokens={handleNeedTokens}
                         onBookingComplete={handleBookingComplete}
+                        onBookingCancelled={handleBookingCancelled}
                     />
                 )}
             </div>

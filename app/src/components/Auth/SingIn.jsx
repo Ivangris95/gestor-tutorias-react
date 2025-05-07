@@ -6,6 +6,7 @@ function SingIn({ onAuthenticate }) {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -35,14 +36,16 @@ function SingIn({ onAuthenticate }) {
         }
     };
 
-    return (
-        <div className="px-lg-3">
-            <h3 className="mb-5 text-center">Sing In</h3>
+    const togglePasswordVisibility = () => {
+        setShowPassword(!showPassword);
+    };
 
+    return (
+        <div className="px-lg-4 py-lg-5">
             {error && <div className="alert alert-danger">{error}</div>}
 
-            <form onSubmit={handleSubmit}>
-                <div className="mb-3">
+            <form onSubmit={handleSubmit} className="py-lg-5 ">
+                <div className="mb-4">
                     <input
                         type="text"
                         className="form-control"
@@ -55,13 +58,28 @@ function SingIn({ onAuthenticate }) {
 
                 <div className="mb-5">
                     <input
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         className="form-control"
                         placeholder="Password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
                     />
+                    <span
+                        onClick={togglePasswordVisibility}
+                        style={{
+                            position: "absolute",
+                            transform: "translateY(-130%)",
+                            right: "60px",
+                            cursor: "pointer",
+                        }}
+                    >
+                        {showPassword ? (
+                            <i className="fa-regular fa-eye-slash"></i>
+                        ) : (
+                            <i className="fa-regular fa-eye"></i>
+                        )}
+                    </span>
                 </div>
 
                 <button
@@ -69,7 +87,7 @@ function SingIn({ onAuthenticate }) {
                     className="btn btn-primary w-100 mt-5"
                     disabled={loading}
                 >
-                    {loading ? "Cargando..." : "Iniciar Sesión"}
+                    {loading ? "Loading..." : "Iniciar Sesión"}
                 </button>
             </form>
         </div>

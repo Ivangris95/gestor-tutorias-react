@@ -1,5 +1,5 @@
 import { useState } from "react";
-import "./App.css";
+import "./components/Home.css";
 import Home from "./components/Home";
 import Login from "./components/Auth/Login";
 

@@ -212,7 +212,7 @@ export const getAvailableHoursForDate = async (date) => {
 };
 
 // Habilitar una hora para una fecha específica (compatibilidad)
-export const addAvailableHour = async (date, timeId, createdBy) => {
+export const addAvailableHour = async (date, timeId) => {
     try {
         // Ahora usamos la nueva funcionalidad de habilitar (eliminar de deshabilitadas)
         return await enableHour(date, timeId);
@@ -321,6 +321,39 @@ export const updateBookingStatus = async (bookingId, status) => {
         return data;
     } catch (error) {
         console.error("Error en updateBookingStatus:", error);
+        throw error;
+    }
+};
+
+// Función para eliminar una reserva desde el panel de administrador
+export const deleteBooking = async (bookingId) => {
+    try {
+        console.log("Intentando eliminar reserva:", bookingId);
+
+        // Cambiamos la URL para que coincida con la ruta en el backend
+        const response = await fetch(
+            `http://localhost:5000/api/bookings/${bookingId}`,
+            {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            }
+        );
+
+        console.log("Respuesta del servidor:", response);
+
+        if (!response.ok) {
+            const text = await response.text();
+            console.error("Respuesta del servidor:", text);
+            throw new Error("Error al eliminar la reserva");
+        }
+
+        const data = await response.json();
+        console.log("Datos de respuesta:", data);
+        return data;
+    } catch (error) {
+        console.error("Error en deleteBooking:", error);
         throw error;
     }
 };

@@ -5,6 +5,7 @@ import PayPalPayment from "./PayPalPayment";
 import StripePayment from "./StripePayment";
 import PurchaseSuccess from "./PurchaseSuccess";
 import { updateUserTokens } from "../../services/tokenService";
+import { useCustomAlert } from "../Alert/CustomAlert"; // Importamos nuestro hook personalizado
 
 const PaymentGateway = ({ onPurchaseComplete }) => {
     console.log(
@@ -24,6 +25,10 @@ const PaymentGateway = ({ onPurchaseComplete }) => {
     // Estado para rastrear si el pago fue exitoso
     const [paymentCompleted, setPaymentCompleted] = useState(false);
     const [orderID, setOrderID] = useState("");
+
+    // Usar nuestro hook personalizado para alertas
+    const { showAlert, AlertComponent, ConfirmDialogComponent } =
+        useCustomAlert();
 
     const handleOptionSelect = (option) => {
         setSelectedOption(option);
@@ -47,9 +52,15 @@ const PaymentGateway = ({ onPurchaseComplete }) => {
             })
             .catch((error) => {
                 console.error("Error al actualizar tokens del usuario:", error);
-                alert(
-                    "La compra se procesó correctamente, pero hubo un problema al acreditar los tokens. Por favor contacta a soporte."
-                );
+
+                // Reemplazamos el alert nativo por nuestro sistema de alertas
+                showAlert({
+                    message:
+                        "The purchase was processed successfully, but there was an issue with crediting the tokens. Please contact support.",
+                    severity: "error",
+                    duration: 5000,
+                });
+
                 setPaymentCompleted(true);
                 setOrderID(orderData.id);
             });
@@ -68,6 +79,12 @@ const PaymentGateway = ({ onPurchaseComplete }) => {
                 price: 5.99,
             });
             setUsedPaymentMethod(null);
+
+            // Mostramos una alerta informativa
+            showAlert({
+                message: "Purchase completed. You can make a new purchase.",
+                severity: "info",
+            });
         }
     };
 
@@ -85,7 +102,7 @@ const PaymentGateway = ({ onPurchaseComplete }) => {
 
     return (
         <div className="container py-4">
-            <h2 className="text-center mb-4">Comprar Tokens</h2>
+            <h2 className="text-center m-5">Buy Tokens</h2>
 
             <TokenOptions
                 options={[
@@ -101,7 +118,7 @@ const PaymentGateway = ({ onPurchaseComplete }) => {
 
             <div className="card mb-4">
                 <div className="card-header">
-                    <h3 className="mb-0">Elige tu método de pago</h3>
+                    <h3 className="mb-0">Choose your payment method</h3>
                 </div>
                 <div className="card-body">
                     <div className="row">
@@ -121,8 +138,8 @@ const PaymentGateway = ({ onPurchaseComplete }) => {
                         </div>
                         <div className="col-md-6">
                             <h4 className="text-center mb-3">
-                                <i className="fab fa-cc-stripe me-2"></i>Tarjeta
-                                de Crédito
+                                <i className="fab fa-cc-stripe me-2"></i>Credit
+                                Card
                             </h4>
                             <StripePayment
                                 amount={selectedOption.price}
@@ -137,6 +154,10 @@ const PaymentGateway = ({ onPurchaseComplete }) => {
                     </div>
                 </div>
             </div>
+
+            {/* Componentes de alerta y diálogo */}
+            <AlertComponent />
+            <ConfirmDialogComponent />
         </div>
     );
 };

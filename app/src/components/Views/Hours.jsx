@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { Alert } from "@mui/material";
+import { useCustomAlert } from "../Alert/CustomAlert"; // Importar nuestro hook personalizado
 
-function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
+function Hours({ selectedDate, onHourSelect, onHourCancel, onNeedTokens }) {
     const [hours, setHours] = useState([]);
     const [bookedSlots, setBookedSlots] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -8,6 +10,14 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
     const [bookingInProgress, setBookingInProgress] = useState(false);
     const [currentUserId, setCurrentUserId] = useState(null);
     const [cancelInProgress, setCancelInProgress] = useState(false);
+
+    // Utilizar nuestro hook personalizado
+    const {
+        showAlert,
+        showConfirmDialog,
+        AlertComponent,
+        ConfirmDialogComponent,
+    } = useCustomAlert();
 
     // Función para formatear la fecha como YYYY-MM-DD
     const formatDate = (date) => {
@@ -76,9 +86,9 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                     .filter((time) => !disabledTimeIds.includes(time.time_id))
                     .map((time) => ({
                         ...time,
-                        is_booked: false, // Inicialmente no están reservadas
-                        booked_by_current_user: false, // Nueva propiedad
-                        booking_id: null, // Guardar el ID de la reserva para cancelación
+                        is_booked: false,
+                        booked_by_current_user: false,
+                        booking_id: null,
                     }));
 
                 // 4. Obtener las reservas para esta fecha para saber cuáles están ocupadas
@@ -93,8 +103,49 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                     if (bookedData.success) {
                         setBookedSlots(bookedData.bookedSlots || []);
 
+                        // También obtener las reservas del usuario actual para esta fecha
+                        // para asegurar que los botones de cancelación sean visibles después de recargar
+                        const userBookingsForDate = [];
+
+                        if (currentUserId) {
+                            try {
+                                const userBookingsResponse = await fetch(
+                                    `http://localhost:5000/api/users/${currentUserId}/bookings`
+                                );
+
+                                if (userBookingsResponse.ok) {
+                                    const userBookingsData =
+                                        await userBookingsResponse.json();
+
+                                    if (userBookingsData.success) {
+                                        // Filtrar solo las reservas para la fecha actual
+                                        userBookingsForDate.push(
+                                            ...userBookingsData.bookings.filter(
+                                                (booking) =>
+                                                    formatDate(
+                                                        new Date(
+                                                            booking.slot_date
+                                                        )
+                                                    ) === formattedDate
+                                            )
+                                        );
+                                        console.log(
+                                            "Reservas del usuario para hoy:",
+                                            userBookingsForDate
+                                        );
+                                    }
+                                }
+                            } catch (err) {
+                                console.error(
+                                    "Error al obtener reservas del usuario:",
+                                    err
+                                );
+                            }
+                        }
+
                         // Marcar las horas reservadas y quién las reservó
                         for (const hour of availableHours) {
+                            // Primero verificar en las reservas generales
                             const bookedSlot = bookedData.bookedSlots.find(
                                 (slot) => slot.start_time === hour.start_time
                             );
@@ -102,17 +153,30 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                             if (bookedSlot) {
                                 hour.is_booked = true;
                                 hour.booked_by = parseInt(bookedSlot.user_id);
-
-                                // IMPORTANTE: Guardamos el ID de la reserva
                                 hour.booking_id = bookedSlot.booking_id;
+                            }
 
-                                // Verificar si está reservada por el usuario actual
-                                if (
-                                    parseInt(bookedSlot.user_id) ===
-                                    currentUserId
-                                ) {
-                                    hour.booked_by_current_user = true;
+                            // Ahora verificar específicamente las reservas del usuario actual
+                            const userBooking = userBookingsForDate.find(
+                                (booking) => {
+                                    // Comparar por hora de inicio, ya que tenemos el objeto completo de la reserva
+                                    const bookingHour =
+                                        booking.start_time.substring(0, 5);
+                                    const hourStartTime =
+                                        hour.start_time.substring(0, 5);
+                                    return bookingHour === hourStartTime;
                                 }
+                            );
+
+                            // Si encontramos una reserva del usuario actual, marcarla
+                            if (userBooking) {
+                                hour.is_booked = true;
+                                hour.booked_by = currentUserId;
+                                hour.booked_by_current_user = true;
+                                hour.booking_id = userBooking.booking_id;
+                            } else if (hour.booked_by === currentUserId) {
+                                // Si ya detectamos que es del usuario en el paso anterior
+                                hour.booked_by_current_user = true;
                             }
                         }
                     }
@@ -121,7 +185,7 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                 setHours(availableHours);
                 setError(null);
             } catch (err) {
-                setError("Error al cargar horarios disponibles");
+                setError("Error loading available times");
                 console.error("Error fetching data:", err);
                 setHours([]);
             } finally {
@@ -153,6 +217,28 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
         return fullDateTime < now;
     };
 
+    // Función para verificar si falta menos de una hora para la tutoría
+    const isWithinOneHourBefore = (startTimeString) => {
+        if (!selectedDate) return false;
+
+        // Crear un objeto Date completo combinando la fecha seleccionada y la hora
+        const [hours, minutes] = startTimeString.split(":");
+        const tutoringTime = new Date(selectedDate);
+        tutoringTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+
+        // Obtener la hora actual
+        const now = new Date();
+
+        // Calcular la diferencia en milisegundos
+        const diffMs = tutoringTime - now;
+
+        // Convertir a minutos
+        const diffMinutes = diffMs / (1000 * 60);
+
+        // Verificar si falta menos de 60 minutos (1 hora)
+        return diffMinutes >= 0 && diffMinutes < 60;
+    };
+
     // Verificar si un horario ya está reservado
     const isTimeBooked = (timeId) => {
         return bookedSlots.some((slot) => slot.time_id === timeId);
@@ -165,158 +251,208 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
             return;
         }
 
-        console.log("Objeto hour seleccionado:", hour);
+        // Mostrar diálogo de confirmación antes de proceder
+        showConfirmDialog({
+            title: "Confirm Reservation",
+            message: `Are you sure you want to reserve a tutoring session on ${new Date(
+                selectedDate
+            ).toLocaleDateString()} from ${formatTime(
+                hour.start_time
+            )} to ${formatTime(
+                hour.end_time
+            )}? This will use 1 token from your account.`,
+            confirmButtonText: "Confirm Reservation",
+            cancelButtonText: "Cancel",
+            confirmButtonColor: "primary",
+            onConfirm: async () => {
+                setBookingInProgress(true);
 
-        setBookingInProgress(true);
+                try {
+                    const userData = JSON.parse(localStorage.getItem("user"));
 
-        try {
-            const userData = JSON.parse(localStorage.getItem("user"));
+                    if (!userData || !userData.id) {
+                        console.error("No hay información de usuario");
+                        setError("You must log in to book a tutoring session");
 
-            if (!userData || !userData.id) {
-                console.error("No hay información de usuario");
-                setError("Debes iniciar sesión para reservar una tutoría");
-                setBookingInProgress(false);
-                return;
-            }
+                        showAlert({
+                            message:
+                                "You must log in to book a tutoring session",
+                            severity: "error",
+                        });
 
-            // Primera opción: verificar tokens directamente
-            const tokensResponse = await fetch(
-                `http://localhost:5000/api/users/${userData.id}/tokens`
-            );
-
-            if (!tokensResponse.ok) {
-                throw new Error("Error al verificar tokens");
-            }
-
-            const tokensData = await tokensResponse.json();
-            console.log("Verificación de tokens:", tokensData);
-
-            if (!tokensData.success || tokensData.tokensAvailable < 1) {
-                console.log(
-                    "Redirigiendo a pasarela de pagos - sin tokens suficientes"
-                );
-                if (onNeedTokens) {
-                    onNeedTokens();
-                }
-                setBookingInProgress(false);
-                return;
-            }
-
-            // Verificar que la hora tiene timeId
-            if (!hour.time_id) {
-                throw new Error("La hora seleccionada no tiene un ID válido");
-            }
-
-            // Datos a enviar al servidor
-            const bookingData = {
-                userId: userData.id,
-                timeId: hour.time_id, // Cambiado de slotId a timeId
-                slotDate: formatDate(selectedDate),
-            };
-
-            console.log("Datos enviados para reserva:", bookingData);
-
-            // Si tiene tokens, intentar la reserva
-            const response = await fetch("http://localhost:5000/api/bookings", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(bookingData),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                if (errorData.needTokens) {
-                    console.log(
-                        "Redirigiendo a pasarela de pagos - según backend"
-                    );
-                    if (onNeedTokens) {
-                        onNeedTokens();
+                        setBookingInProgress(false);
+                        return;
                     }
-                    setBookingInProgress(false);
-                    return;
-                }
-                throw new Error(
-                    errorData.message || "Error al procesar reserva"
-                );
-            }
 
-            const data = await response.json();
-            console.log("Respuesta de reserva:", data);
+                    // Primera opción: verificar tokens directamente
+                    const tokensResponse = await fetch(
+                        `http://localhost:5000/api/users/${userData.id}/tokens`
+                    );
 
-            if (data.success) {
-                alert("Reserva realizada con éxito");
+                    if (!tokensResponse.ok) {
+                        throw new Error("Error verifying tokens");
+                    }
 
-                // Actualizar la lista de horarios reservados localmente
-                const newBookedSlot = {
-                    time_id: hour.time_id,
-                    start_time: hour.start_time,
-                    user_id: userData.id, // Incluir el ID del usuario actual
-                    booking_id: data.bookingId, // Guardar el ID de la reserva
-                };
+                    const tokensData = await tokensResponse.json();
+                    console.log("Verificación de tokens:", tokensData);
 
-                setBookedSlots([...bookedSlots, newBookedSlot]);
-
-                // Actualizar la lista de horas para mostrar la nueva reserva en verde
-                setHours((prevHours) =>
-                    prevHours.map((h) => {
-                        if (h.time_id === hour.time_id) {
-                            return {
-                                ...h,
-                                is_booked: true,
-                                booked_by: parseInt(userData.id),
-                                booked_by_current_user: true,
-                                booking_id: data.bookingId,
-                            };
+                    if (!tokensData.success || tokensData.tokensAvailable < 1) {
+                        console.log(
+                            "Redirigiendo a pasarela de pagos - sin tokens suficientes"
+                        );
+                        if (onNeedTokens) {
+                            onNeedTokens();
                         }
-                        return h;
-                    })
-                );
+                        setBookingInProgress(false);
+                        return;
+                    }
 
-                if (onHourSelect) {
-                    onHourSelect(hour, true);
+                    // Verificar que la hora tiene timeId
+                    if (!hour.time_id) {
+                        throw new Error(
+                            "The selected time doesn't have a valid ID"
+                        );
+                    }
+
+                    // Datos a enviar al servidor
+                    const bookingData = {
+                        userId: userData.id,
+                        timeId: hour.time_id,
+                        slotDate: formatDate(selectedDate),
+                    };
+
+                    console.log("Datos enviados para reserva:", bookingData);
+
+                    // Si tiene tokens, intentar la reserva
+                    const response = await fetch(
+                        "http://localhost:5000/api/bookings",
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify(bookingData),
+                        }
+                    );
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        if (errorData.needTokens) {
+                            console.log(
+                                "Redirigiendo a pasarela de pagos - según backend"
+                            );
+                            if (onNeedTokens) {
+                                onNeedTokens();
+                            }
+                            setBookingInProgress(false);
+                            return;
+                        }
+                        throw new Error(
+                            errorData.message || "Error processing reservation"
+                        );
+                    }
+
+                    const data = await response.json();
+                    console.log("Respuesta de reserva:", data);
+
+                    if (data.success) {
+                        showAlert({
+                            message: "Reservation successfully made",
+                            severity: "success",
+                            customStyles: {
+                                backgroundColor: "#4caf50",
+                                color: "white",
+                            },
+                        });
+
+                        // Actualizar la lista de horarios reservados localmente
+                        const newBookedSlot = {
+                            time_id: hour.time_id,
+                            start_time: hour.start_time,
+                            user_id: userData.id,
+                            booking_id: data.bookingId,
+                        };
+
+                        setBookedSlots([...bookedSlots, newBookedSlot]);
+
+                        // Actualizar la lista de horas para mostrar la nueva reserva en verde
+                        setHours((prevHours) =>
+                            prevHours.map((h) => {
+                                if (h.time_id === hour.time_id) {
+                                    return {
+                                        ...h,
+                                        is_booked: true,
+                                        booked_by: parseInt(userData.id),
+                                        booked_by_current_user: true,
+                                        booking_id: data.bookingId,
+                                    };
+                                }
+                                return h;
+                            })
+                        );
+
+                        if (onHourSelect) {
+                            onHourSelect(hour, true);
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error completo:", err);
+                    setError(
+                        err.message || "Error processing the reservation."
+                    );
+
+                    showAlert({
+                        message:
+                            err.message || "Error processing the reservation.",
+                        severity: "error",
+                        duration: 5000,
+                    });
+                } finally {
+                    setBookingInProgress(false);
                 }
-            }
-        } catch (err) {
-            console.error("Error completo:", err);
-            setError(err.message || "Error al procesar la reserva");
-        } finally {
-            setBookingInProgress(false);
-        }
+            },
+        });
     };
 
-    // Función para cancelar una reserva
-    const handleCancelBooking = async (hour, event) => {
+    // Abrir el diálogo de confirmación para cancelar
+    const openCancelDialog = (hour, event) => {
         // Detener propagación para evitar que el clic en la X afecte al botón completo
         event.stopPropagation();
 
-        // Depuración
-        console.log("Datos de hora a cancelar:", {
-            time_id: hour.time_id,
-            start_time: hour.start_time,
-            booking_id: hour.booking_id,
-            is_booked: hour.is_booked,
-            booked_by_current_user: hour.booked_by_current_user,
-        });
+        // Verificar si falta menos de una hora
+        if (isWithinOneHourBefore(hour.start_time)) {
+            showAlert({
+                message:
+                    "The reservation cannot be canceled less than 1 hour before it starts.",
+                severity: "warning",
+            });
+            return;
+        }
 
         if (!hour.booking_id) {
             console.error("No se puede cancelar: falta ID de reserva", hour);
-            setError(
-                "No se puede cancelar la reserva: información incompleta."
-            );
+            showAlert({
+                message:
+                    "The reservation cannot be canceled: incomplete information.",
+                severity: "error",
+            });
             return;
         }
 
-        // Confirmar con el usuario
-        if (
-            !window.confirm(
-                "¿Estás seguro de que deseas cancelar esta reserva? Se te devolverá el token utilizado."
-            )
-        ) {
-            return;
-        }
+        // Abrir diálogo de confirmación
+        showConfirmDialog({
+            title: "Are you sure you want to cancel this reservation?",
+            message:
+                "The token used to make this reservation will be returned to you.",
+            confirmButtonText: "Confirm",
+            cancelButtonText: "Cancel",
+            confirmButtonColor: "error",
+            onConfirm: () => handleCancelBooking(hour),
+        });
+    };
 
+    // Función para cancelar una reserva
+    const handleCancelBooking = async (hour) => {
         setCancelInProgress(true);
 
         try {
@@ -349,7 +485,7 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(
-                    errorData.message || "Error al cancelar reserva"
+                    errorData.message || "Error canceling reservation."
                 );
             }
 
@@ -357,9 +493,11 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
             console.log("Respuesta del servidor:", data);
 
             if (data.success) {
-                alert(
-                    "Reserva cancelada con éxito. Se ha devuelto 1 token a tu cuenta."
-                );
+                showAlert({
+                    message:
+                        "Reservation successfully canceled. 1 token has been returned to your account.",
+                    severity: "success",
+                });
 
                 // Actualizar la lista de horas reservadas localmente
                 setBookedSlots(
@@ -384,15 +522,21 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                     })
                 );
 
-                // IMPORTANTE: Notificar al componente padre para actualizar los tokens
-                // Esto es clave para que se refresque el contador de tokens en la interfaz
-                if (onHourSelect) {
+                // Notificar al componente Calendar sobre la cancelación
+                if (onHourCancel) {
+                    onHourCancel(hour);
+                } else if (onHourSelect) {
                     onHourSelect(hour, true);
                 }
             }
         } catch (err) {
             console.error("Error al cancelar reserva:", err);
-            setError(err.message || "Error al cancelar la reserva");
+            setError(err.message || "Error canceling reservation.");
+
+            showAlert({
+                message: err.message || "Error canceling reservation.",
+                severity: "error",
+            });
         } finally {
             setCancelInProgress(false);
         }
@@ -405,21 +549,26 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
     }
 
     if (error) {
-        return <div className="alert alert-danger m-2">{error}</div>;
+        return (
+            <Alert severity="error" className="m-2">
+                {error}
+            </Alert>
+        );
     }
 
     return (
-        <div className="d-flex flex-column align-items-center w-100 overflow-y-auto p-2">
+        <div className="d-flex flex-column align-items-center justify-content-evenly w-100 h-100 p-0">
             {hours.length > 0 ? (
                 hours.map((hour) => {
                     // Verificar si esta hora ya está reservada o ha pasado
-                    const booked =
-                        hour.is_booked ||
-                        isTimeBooked(hour.time_id) ||
-                        isTimePassed(hour.start_time);
+                    const booked = hour.is_booked || isTimeBooked(hour.time_id);
+                    const isPast = isTimePassed(hour.start_time);
+                    const isWithinOneHour = isWithinOneHourBefore(
+                        hour.start_time
+                    );
 
                     // Determinar el estilo del botón según quién reservó
-                    let buttonClass = "btn-outline-primary"; // Por defecto (disponible)
+                    let buttonClass = "btn-outline-primary";
                     let content = (
                         <>
                             {formatTime(hour.start_time)} -{" "}
@@ -429,27 +578,47 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
 
                     if (booked) {
                         if (hour.booked_by_current_user) {
-                            // La solución es reemplazar el botón dentro de botón por una estructura diferente
-                            // Usaremos un div en lugar de un botón para el contenedor principal
                             return (
                                 <div
                                     key={hour.time_id}
                                     className="d-flex justify-content-between align-items-center w-75 m-2"
                                 >
-                                    <div className="btn btn-success flex-grow-1 text-start">
-                                        {formatTime(hour.start_time)} -{" "}
-                                        {formatTime(hour.end_time)}
-                                        <i className="fa-solid fa-check ms-2"></i>
+                                    <div className="btn btn-success flex-grow-1 text-start d-flex justify-content-between align-items-center">
+                                        <span>
+                                            {formatTime(hour.start_time)} -{" "}
+                                            {formatTime(hour.end_time)}
+                                            <i className="fa-solid fa-check ms-2"></i>
+                                        </span>
+
+                                        {isWithinOneHour && !isPast && (
+                                            <span className="badge bg-warning text-dark ms-auto">
+                                                Coming
+                                            </span>
+                                        )}
                                     </div>
 
-                                    {!isTimePassed(hour.start_time) && (
+                                    {/* Solo deshabilitar el botón de cancelación cuando falte menos de una hora */}
+                                    {!isPast && (
                                         <button
-                                            className="btn btn-sm btn-danger ms-2"
+                                            className="btn btn-sm btn-danger ms-1 rounded-3 fs-6"
                                             onClick={(e) =>
-                                                handleCancelBooking(hour, e)
+                                                openCancelDialog(hour, e)
                                             }
-                                            disabled={cancelInProgress}
-                                            style={{ padding: "0 6px" }}
+                                            disabled={
+                                                isWithinOneHour ||
+                                                cancelInProgress
+                                            }
+                                            style={{
+                                                padding: "5.5px 10.5px",
+                                                opacity: isWithinOneHour
+                                                    ? "0.65"
+                                                    : "1",
+                                            }}
+                                            title={
+                                                isWithinOneHour
+                                                    ? "It's not possible to cancel less than 1 hour before."
+                                                    : "Cancel booking."
+                                            }
                                         >
                                             <i className="fa-solid fa-times"></i>
                                         </button>
@@ -457,7 +626,6 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                                 </div>
                             );
                         } else {
-                            // Reserva de otro usuario (gris)
                             buttonClass = "btn-secondary";
                             content = (
                                 <>
@@ -467,20 +635,30 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                                 </>
                             );
                         }
+                    } else if (isPast) {
+                        buttonClass = "btn-secondary";
+                        content = (
+                            <>
+                                {formatTime(hour.start_time)} -{" "}
+                                {formatTime(hour.end_time)}
+                            </>
+                        );
                     }
 
-                    // Para slots no reservados o reservados por otros usuarios (no por el usuario actual)
-                    // Ya manejamos el caso de reservas del usuario actual arriba
+                    // Para slots no reservados o reservados por otros usuarios
                     if (!hour.booked_by_current_user) {
                         return (
                             <button
                                 key={hour.time_id}
-                                className={`btn ${buttonClass} w-75 m-2`}
+                                className={`btn ${buttonClass} w-75 m-1`}
                                 onClick={() =>
-                                    !booked && handleHourSelect(hour)
+                                    !booked && !isPast && handleHourSelect(hour)
                                 }
                                 disabled={
-                                    bookingInProgress || !selectedDate || booked
+                                    bookingInProgress ||
+                                    !selectedDate ||
+                                    booked ||
+                                    isPast
                                 }
                             >
                                 {content}
@@ -488,7 +666,6 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                         );
                     }
 
-                    // Si llegamos aquí, es una reserva del usuario actual que ya se manejó arriba
                     return null;
                 })
             ) : (
@@ -496,6 +673,10 @@ function Hours({ selectedDate, onHourSelect, onNeedTokens }) {
                     There are no available times for this date.
                 </p>
             )}
+
+            {/* Incluir los componentes de alerta y diálogo */}
+            <AlertComponent />
+            <ConfirmDialogComponent />
         </div>
     );
 }

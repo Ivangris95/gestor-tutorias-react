@@ -169,13 +169,13 @@ const StripePayment = ({ amount, description, onPaymentSuccess }) => {
     return (
         <div className="d-flex flex-column align-items-center justify-content-center py-3">
             <p className="text-center mb-4">
-                Paga con tu tarjeta de crédito o débito
+                Pay with your credit or debit card
             </p>
 
             {!isStripeLoaded ? (
                 <div className="d-flex justify-content-center mb-4">
                     <div className="spinner-border text-primary" role="status">
-                        <span className="visually-hidden">Cargando...</span>
+                        <span className="visually-hidden">Loading...</span>
                     </div>
                 </div>
             ) : (
@@ -206,7 +206,7 @@ const StripePayment = ({ amount, description, onPaymentSuccess }) => {
                                     role="status"
                                     aria-hidden="true"
                                 ></span>
-                                Procesando...
+                                Processing...
                             </>
                         ) : (
                             `Pagar $${amount.toFixed(2)}`

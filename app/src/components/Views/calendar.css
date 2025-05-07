@@ -1,28 +1,70 @@
-.fc {
-    height: 100%;
-    width: 100%;
+/* Estilos para el calendario */
+.calendar-container {
+    background-color: white;
+    border-radius: 8px;
 }
 
-.fc-daygrid-day-number {
-    font-weight: bold;
-    font-size: 16px;
-    padding: 8px;
-    transition: all 0.2s ease;
-    text-decoration: none;
+.hours-container {
+    background-color: white;
+    border-radius: 8px;
 }
 
-.fc-col-header-cell a {
-    text-decoration: none;
-    font-weight: bold;
-    font-size: 14px;
-    color: #555;
-    text-transform: uppercase;
-    padding: 10px 0;
-    display: block;
-    transition: all 0.2s ease;
+/* Estilos para los selectores de mes y año */
+.month-year-selectors {
+    margin-bottom: 10px;
 }
 
+/* Quitar los estilos de color de fondo que teníamos antes */
+.fc-day {
+    background-color: white !important;
+    transition: background-color 0.2s ease;
+}
+
+/* Efecto hover para las celdas */
 .fc-day:hover {
-    background-color: rgba(0, 123, 255, 0.2);
+    background-color: rgba(
+        173,
+        216,
+        230,
+        0.3
+    ) !important; /* Azul claro con transparencia */
+}
+
+.fc-day-today {
+    background-color: rgba(240, 240, 255, 0.5) !important;
+}
+
+/* Asegurar que los días que se pueden clickear tengan cursor de mano */
+.fc-day-future:not(.day-no-availability) {
     cursor: pointer;
+}
+
+/* Estilo para los números del día - quitar subrayado */
+.fc-daygrid-day-number {
+    font-weight: 500;
+    padding: 5px 0 !important;
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
+/* Quitar decoraciones de texto para todos los elementos dentro del día */
+.fc-daygrid-day a,
+.fc-daygrid-day div,
+.fc-daygrid-day span,
+.fc-daygrid-day i {
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
+/* Estilos para mostrar el indicador de carga */
+.availability-loading {
+    text-align: center;
+    margin-bottom: 8px;
+    color: #6c757d;
+}
+
+/* Estilos adicionales para los indicadores de disponibilidad */
+.fc-daygrid-day-top {
+    flex-direction: column !important;
+    align-items: center !important;
 }

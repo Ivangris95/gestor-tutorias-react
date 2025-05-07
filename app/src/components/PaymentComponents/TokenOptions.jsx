@@ -27,7 +27,7 @@ const TokenOptions = ({ options, selectedOption, onOptionSelect }) => {
                         </div>
                         {selectedOption.tokens === option.tokens && (
                             <div className="card-footer text-center bg-primary text-white">
-                                Seleccionado
+                                Selected
                             </div>
                         )}
                     </div>
