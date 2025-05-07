@@ -325,6 +325,39 @@ export const updateBookingStatus = async (bookingId, status) => {
     }
 };
 
+// Función para eliminar una reserva desde el panel de administrador
+export const deleteBooking = async (bookingId) => {
+    try {
+        console.log("Intentando eliminar reserva:", bookingId);
+
+        // Cambiamos la URL para que coincida con la ruta en el backend
+        const response = await fetch(
+            `http://localhost:5000/api/bookings/${bookingId}`,
+            {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            }
+        );
+
+        console.log("Respuesta del servidor:", response);
+
+        if (!response.ok) {
+            const text = await response.text();
+            console.error("Respuesta del servidor:", text);
+            throw new Error("Error al eliminar la reserva");
+        }
+
+        const data = await response.json();
+        console.log("Datos de respuesta:", data);
+        return data;
+    } catch (error) {
+        console.error("Error en deleteBooking:", error);
+        throw error;
+    }
+};
+
 // Obtener detalles de una reserva específica
 export const getBookingDetails = async (bookingId) => {
     try {

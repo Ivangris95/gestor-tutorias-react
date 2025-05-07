@@ -1,5 +1,124 @@
 const db = require("../config/db");
+const querystring = require("querystring");
 const axios = require("axios");
+
+const zoomApiUrl = "https://api.zoom.us/v2";
+const zoomOAuthUrl = "https://zoom.us/oauth/token";
+const zoomClientId = process.env.ZOOM_CLIENT_ID;
+const zoomClientSecret = process.env.ZOOM_CLIENT_SECRET;
+
+async function getZoomRefreshToken() {
+    console.log("Obteniendo refresh token de Zoom");
+    try {
+        const results = await db.query("SELECT * FROM app_settings LIMIT 1");
+
+        console.log("Resultado de la consulta:", results);
+
+        // Verificar si hay resultados y si el primer resultado tiene el token
+        if (
+            results &&
+            results.length > 0 &&
+            results[0] &&
+            results[0].zoom_refresh_token
+        ) {
+            return results[0].zoom_refresh_token;
+        }
+
+        console.log("No se encontró refresh token en la base de datos");
+        return null;
+    } catch (error) {
+        console.error(
+            "Error al obtener el refresh token de la base de datos:",
+            error
+        );
+        return null;
+    }
+}
+
+async function saveNewZoomTokens(newAccessToken, newRefreshToken) {
+    console.log(
+        "Llamando a saveNewZoomTokens - ¡IMPLEMENTAR!",
+        newAccessToken,
+        newRefreshToken
+    );
+    try {
+        await db.query(
+            "UPDATE app_settings SET zoom_access_token = ?, zoom_refresh_token = ?",
+            [newAccessToken, newRefreshToken]
+        );
+        return true;
+    } catch (error) {
+        console.error(
+            "Error al guardar los nuevos tokens en la base de datos:",
+            error
+        );
+        return false;
+    }
+}
+
+async function getCurrentZoomAccessToken() {
+    console.log("Obteniendo token de acceso de Zoom actual");
+    try {
+        const results = await db.query("SELECT * FROM app_settings LIMIT 1");
+
+        console.log("Resultado de la consulta:", results);
+
+        // Verificar si hay resultados y si el primer resultado tiene el token
+        if (
+            results &&
+            results.length > 0 &&
+            results[0] &&
+            results[0].zoom_access_token
+        ) {
+            return results[0].zoom_access_token;
+        }
+
+        console.log("No se encontró token de acceso en la base de datos");
+        return null;
+    } catch (error) {
+        console.error(
+            "Error al obtener el access token de la base de datos:",
+            error
+        );
+        return null;
+    }
+}
+
+async function refreshZoomAccessToken() {
+    try {
+        const refreshToken = await getZoomRefreshToken();
+        if (!refreshToken) {
+            throw new Error("No se encontró refresh token.");
+        }
+
+        const credentials = Buffer.from(
+            `${zoomClientId}:${zoomClientSecret}`
+        ).toString("base64");
+        const response = await axios.post(
+            zoomOAuthUrl,
+            querystring.stringify({
+                grant_type: "refresh_token",
+                refresh_token: refreshToken,
+            }),
+            {
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    Authorization: `Basic ${credentials}`,
+                },
+            }
+        );
+
+        const { access_token, refresh_token, expires_in } = response.data;
+        await saveNewZoomTokens(access_token, refresh_token);
+        return access_token;
+    } catch (error) {
+        console.error(
+            "Error al refrescar el token de acceso de Zoom:",
+            error.response ? error.response.data : error.message
+        );
+        throw new Error("No se pudo refrescar el token de acceso de Zoom.");
+    }
+}
 
 exports.createBooking = async (req, res) => {
     const connection = await db.getConnection();
@@ -305,7 +424,7 @@ exports.cancelBooking = async (req, res) => {
 
         res.json({
             success: true,
-            message: "Reserva cancelada correctamente",
+            message: "The booking was cancelled successfully.",
             tokensReturned: 1,
             tokensAvailable: tokensAvailable,
         });
@@ -315,7 +434,95 @@ exports.cancelBooking = async (req, res) => {
 
         res.status(500).json({
             success: false,
-            message: "Error al cancelar la reserva",
+            message: "There was an error cancelling the booking",
+            error: error.message,
+        });
+    } finally {
+        connection.release();
+    }
+};
+
+/**
+ * Elimina completamente una reserva (solo para administradores)
+ */
+exports.deleteBookingAdmin = async (req, res) => {
+    const connection = await db.getConnection();
+
+    try {
+        const { bookingId } = req.params;
+
+        // Verificar que el usuario que realiza la acción es un administrador
+        const adminId = req.user.user_id;
+
+        // Verificar que es un administrador
+        const [adminCheck] = await connection.execute(
+            "SELECT is_admin FROM users WHERE user_id = ?",
+            [adminId]
+        );
+
+        if (adminCheck.length === 0 || adminCheck[0].is_admin !== 1) {
+            await connection.rollback();
+            return res.status(403).json({
+                success: false,
+                message: "No tienes permisos para realizar esta acción",
+            });
+        }
+
+        // Comenzar transacción
+        await connection.beginTransaction();
+
+        // 1. Obtener información de la reserva
+        const [bookings] = await connection.execute(
+            `SELECT b.*, a.slot_id 
+         FROM bookings b
+         JOIN available_slots a ON b.slot_id = a.slot_id
+         WHERE b.booking_id = ?`,
+            [bookingId]
+        );
+
+        if (bookings.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({
+                success: false,
+                message: "Reserva no encontrada",
+            });
+        }
+
+        const booking = bookings[0];
+
+        // 2. ELIMINAR la reserva
+        await connection.execute("DELETE FROM bookings WHERE booking_id = ?", [
+            bookingId,
+        ]);
+
+        // 3. Liberar el slot
+        await connection.execute(
+            "UPDATE available_slots SET is_booked = 0 WHERE slot_id = ?",
+            [booking.slot_id]
+        );
+
+        // 4. Devolver el token al estudiante
+        if (booking.user_id && booking.tokens_used > 0) {
+            await connection.execute(
+                "UPDATE tokens SET tokens_available = tokens_available + ?, tokens_used = tokens_used - ? WHERE user_id = ?",
+                [booking.tokens_used, booking.tokens_used, booking.user_id]
+            );
+        }
+
+        // Confirmar transacción
+        await connection.commit();
+
+        res.json({
+            success: true,
+            message: "Reserva eliminada correctamente por el administrador",
+        });
+    } catch (error) {
+        console.error("Error al eliminar reserva (admin):", error);
+        await connection.rollback();
+
+        res.status(500).json({
+            success: false,
+            message: "Error al eliminar la reserva",
             error: error.message,
         });
     } finally {
@@ -335,7 +542,7 @@ exports.getUserBookings = async (req, res) => {
         if (!userId) {
             return res.status(400).json({
                 success: false,
-                message: "Se requiere el ID del usuario",
+                message: "User ID is required.",
             });
         }
 
@@ -434,7 +641,7 @@ exports.getUserBookings = async (req, res) => {
         console.error("Error al obtener tutorías del usuario:", error);
         res.status(500).json({
             success: false,
-            message: "Error al obtener tutorías del usuario",
+            message: "There was an error getting the user's tutorials.",
             error: error.message,
         });
     }
@@ -480,74 +687,148 @@ exports.markBookingNotificationsAsRead = async (req, res) => {
 /**
  * Función para generar una reunión de Zoom utilizando la API REST directamente
  */
+
 exports.generateZoomMeeting = async (booking) => {
     try {
-        const pmiMeetingId = "6277351083";
+        let accessToken = await getCurrentZoomAccessToken();
 
-        const zoomLink = `https://zoom.us/j/${pmiMeetingId}`;
+        // Verificar si hay un token de acceso válido
+        if (!accessToken) {
+            console.log("No se obtuvo un token de acceso válido para Zoom");
+            return {
+                zoomLink: null,
+                meetingId: null,
+                meetingPassword: null,
+                zoomNotConfigured: true,
+                instructions:
+                    "El administrador debe configurar la integración con Zoom antes de poder generar enlaces.",
+            };
+        }
 
-        const meetingInfo = {
-            zoomLink: zoomLink,
-            meetingId: pmiMeetingId,
-            meetingPassword: "",
-            instructions:
-                "Al hacer clic en el enlace, es posible que se solicite un código de acceso. El anfitrión deberá admitir a los participantes.",
-        };
-
-        return meetingInfo;
-    } catch (error) {
-        console.error("Error en generateZoomMeeting:", error);
-        throw new Error(
-            "No se pudo generar el enlace de Zoom: " + error.message
+        const response = await axios.post(
+            `${zoomApiUrl}/users/me/meetings`,
+            {
+                topic: `Tutorial for booking ${booking.booking_id}`,
+                type: 2,
+                settings: {
+                    join_before_host: true,
+                },
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    "Content-Type": "application/json",
+                },
+            }
         );
+
+        const { id, join_url, password } = response.data;
+        return {
+            zoomLink: join_url,
+            meetingId: id.toString(),
+            meetingPassword: password || "",
+            instructions:
+                "Haz clic en el enlace para unirte a la reunión de Zoom.",
+        };
+    } catch (error) {
+        if (
+            error.response &&
+            error.response.data &&
+            error.response.data.code === 124
+        ) {
+            console.warn("Token de acceso inválido, intentando refrescar...");
+            try {
+                const newAccessToken = await refreshZoomAccessToken();
+
+                if (!newAccessToken) {
+                    console.error(
+                        "No se pudo obtener un nuevo token de acceso"
+                    );
+                    return {
+                        zoomLink: null,
+                        meetingId: null,
+                        meetingPassword: null,
+                        zoomNotConfigured: true,
+                        instructions:
+                            "No se pudo refrescar el token de Zoom. El administrador debe reconfigurar la integración.",
+                    };
+                }
+
+                // Reintentar generar la reunión con el nuevo token
+                const response = await axios.post(
+                    `${zoomApiUrl}/users/me/meetings`,
+                    {
+                        topic: `Tutorial for booking ${booking.booking_id}`,
+                        type: 2,
+                        settings: {
+                            join_before_host: true,
+                        },
+                    },
+                    {
+                        headers: {
+                            Authorization: `Bearer ${newAccessToken}`,
+                            "Content-Type": "application/json",
+                        },
+                    }
+                );
+                const { id, join_url, password } = response.data;
+                return {
+                    zoomLink: join_url,
+                    meetingId: id.toString(),
+                    meetingPassword: password || "",
+                    instructions:
+                        "Haz clic en el enlace para unirte a la reunión de Zoom.",
+                };
+            } catch (refreshError) {
+                console.error(
+                    "Error al refrescar el token y reintentar:",
+                    refreshError
+                );
+                // En lugar de lanzar un error, devolver un objeto que indique el problema
+                return {
+                    zoomLink: null,
+                    meetingId: null,
+                    meetingPassword: null,
+                    error: true,
+                    errorMessage: `No se pudo refrescar el token de Zoom: ${refreshError.message}`,
+                };
+            }
+        } else {
+            console.error(
+                "Error al generar la reunión de Zoom:",
+                error.response ? error.response.data : error.message
+            );
+            // En lugar de lanzar un error, devolver un objeto que indique el problema
+            return {
+                zoomLink: null,
+                meetingId: null,
+                meetingPassword: null,
+                error: true,
+                errorMessage: `No se pudo generar la reunión de Zoom: ${
+                    error.response
+                        ? JSON.stringify(error.response.data)
+                        : error.message
+                }`,
+            };
+        }
     }
 };
 
-/**
- * Genera un enlace de Zoom real para una reserva
- */
 exports.generateZoomLink = async (req, res) => {
-    const connection = await db.getConnection();
+    const connection = await db.getConnection(); // Obtener una conexión para esta solicitud
 
     try {
         const { bookingId } = req.params;
 
-        // Validar bookingId
-        if (!bookingId) {
-            return res.status(400).json({
-                success: false,
-                message: "Se requiere el ID de la reserva",
-            });
-        }
-
-        // Verificar si la reserva existe y obtener sus detalles
         const [bookings] = await connection.execute(
-            `SELECT 
-              b.*, 
-              a.slot_date, 
-              a.start_time, 
-              a.end_time,
-              u.username as student_name,
-              t.username as tutor_name,
-              t.user_id as tutor_id
-            FROM 
-              bookings b
-            JOIN 
-              available_slots a ON b.slot_id = a.slot_id
-            JOIN 
-              users u ON b.user_id = u.user_id
-            JOIN 
-              users t ON a.created_by = t.user_id
-            WHERE 
-              b.booking_id = ?`,
+            "SELECT booking_id, zoom_link, meeting_id, meeting_password FROM bookings WHERE booking_id = ?",
             [bookingId]
         );
 
-        if (bookings.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "Reserva no encontrada",
-            });
+        if (!bookings || bookings.length === 0) {
+            return res
+                .status(404)
+                .json({ success: false, message: "Reserva no encontrada" });
         }
 
         const booking = bookings[0];
@@ -567,7 +848,7 @@ exports.generateZoomLink = async (req, res) => {
             });
         }
 
-        // Generar un nuevo enlace de Zoom
+        // Generar un nuevo enlace de Zoom utilizando la API (la función generateZoomMeeting manejará la autenticación)
         try {
             const zoomResponse = await exports.generateZoomMeeting(booking);
 
@@ -581,9 +862,7 @@ exports.generateZoomLink = async (req, res) => {
 
             // Actualizar la reserva con los datos de Zoom
             await connection.execute(
-                `UPDATE bookings 
-                SET zoom_link = ?, meeting_id = ?, meeting_password = ? 
-                WHERE booking_id = ?`,
+                `UPDATE bookings SET zoom_link = ?, meeting_id = ?, meeting_password = ? WHERE booking_id = ?`,
                 [
                     zoomResponse.zoomLink,
                     zoomResponse.meetingId,
@@ -601,7 +880,6 @@ exports.generateZoomLink = async (req, res) => {
             });
         } catch (error) {
             console.error("Error al generar enlace de Zoom:", error);
-
             return res.status(500).json({
                 success: false,
                 message: "No se pudo generar el enlace de Zoom",
@@ -616,6 +894,6 @@ exports.generateZoomLink = async (req, res) => {
             error: error.message,
         });
     } finally {
-        connection.release();
+        if (connection) connection.release(); // Liberar la conexión para esta solicitud
     }
 };
